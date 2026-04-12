@@ -10,7 +10,7 @@ import { useState } from "react"
 import { Trash2, Check, ArrowRight, Wand2, Workflow, User, Sparkles, Image, Settings, Pencil } from "lucide-react"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
 import { useProjectStore } from "@/stores/projectStore"
-import type { Character } from "@/types"
+import type { Character, CharacterEditData } from "@/types"
 import CharacterCreator from "../CharacterCreator"
 
 interface CharactersTabProps {
@@ -74,13 +74,14 @@ export default function CharactersTab({
     setDetailOpen(false)
   }
 
-  const handleUpdate = async (data: { id: number; name: string; gender: string; ageGroup: string; role: 'main' | 'support'; genMethod: string; model: string; description: string; referenceImage?: string; seed?: string; seedMode?: 'random' | 'fixed'; quantity?: number; isRealPerson?: boolean; batchReferenceArchive?: string }) => {
+  const handleUpdate = async (data: CharacterEditData) => {
     if (!projectId) return
     const roleMap: Record<string, '主角' | '配角'> = { main: '主角', support: '配角' }
-    await updateCharacter(projectId, data.id, { 
-      ...data, 
-      role: roleMap[data.role]
-    })
+    const updateData: Partial<Character> = {
+      ...data,
+      role: data.role ? roleMap[data.role] : undefined,
+    }
+    await updateCharacter(projectId, data.id, updateData)
     setCreatorOpen(false)
     setEditCharacter(null)
     notify.success("角色已更新")

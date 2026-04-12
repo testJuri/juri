@@ -1,15 +1,11 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { X, ImagePlus, Package, LayoutList, Check, ChevronDown, CheckCircle2, Clock, Loader2 } from "lucide-react"
+
+import { X, ImagePlus, Package, LayoutList, CheckCircle2, Clock, Loader2 } from "lucide-react"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
 import { useMultiUpload } from "@/hooks/useUpload"
+import { ImageGenerationForm, type ImageGenerationConfig } from "@/components/forms/ImageGenerationForm"
 import type { ObjectItem } from "@/types"
 
 export interface ObjectCreateData {
@@ -18,6 +14,7 @@ export interface ObjectCreateData {
   model?: string
   prompt?: string
   aspectRatio?: "1:1" | "16:9" | "9:16" | "4:3"
+  quantity?: number
   referenceImage?: string
   referenceImages?: string[]
 }
@@ -26,11 +23,10 @@ export interface ObjectEditData extends ObjectCreateData {
   id: number
 }
 
-const models = [
-  { id: "jimeng-3", name: "即梦 3.0", desc: "中文语义强，适合概念物品" },
-  { id: "keling-3", name: "可灵 3.0", desc: "质感稳定，适合商品表达" },
-  { id: "mj-v7", name: "Midjourney V7", desc: "风格化强，适合创意设计" },
-  { id: "sdxl", name: "SDXL", desc: "通用型底模，便于快速出图" },
+const objectGenerationTasks = [
+  { id: 1, name: "光子武士刀", status: "processing", detail: "正在生成多角度预览", time: "刚刚" },
+  { id: 2, name: "古董怀表", status: "completed", detail: "主图和透明底图已完成", time: "12 分钟前" },
+  { id: 3, name: "战术背包", status: "queued", detail: "等待队列中，还需约 3 分钟", time: "18 分钟前" },
 ]
 
 interface ObjectCreatorProps {
@@ -41,12 +37,6 @@ interface ObjectCreatorProps {
   initialData?: ObjectItem | null
   mode?: 'create' | 'edit'
 }
-
-const objectGenerationTasks = [
-  { id: 1, name: "光子武士刀", status: "processing", detail: "正在生成多角度预览", time: "刚刚" },
-  { id: 2, name: "古董怀表", status: "completed", detail: "主图和透明底图已完成", time: "12 分钟前" },
-  { id: 3, name: "战术背包", status: "queued", detail: "等待队列中，还需约 3 分钟", time: "18 分钟前" },
-]
 
 export default function ObjectCreator({ 
   open, 
@@ -59,29 +49,35 @@ export default function ObjectCreator({
   const { notify } = useFeedback()
   const isEditMode = mode === 'edit' && initialData != null
   const [genMethod, setGenMethod] = useState<"model" | "upload">("model")
-  const [prompt, setPrompt] = useState("")
-  const [aspectRatio, setAspectRatio] = useState<"1:1" | "16:9" | "9:16" | "4:3">("1:1")
-  const [selectedModel, setSelectedModel] = useState("sdxl")
   const [objectName, setObjectName] = useState("")
-  const [referenceImages, setReferenceImages] = useState<string[]>([])
-  const [isReferenceDragOver, setIsReferenceDragOver] = useState(false)
   const [taskDrawerOpen, setTaskDrawerOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const batchFileInputRef = useRef<HTMLInputElement>(null)
+
+  // AI 生成配置
+  const [generationConfig, setGenerationConfig] = useState<ImageGenerationConfig>({
+    model: "",
+    prompt: "",
+    aspectRatio: "1:1",
+    quantity: 1,
+    referenceImages: [],
+  })
+
+  // 上传模式下的参考图
+  const [uploadReferenceImages, setUploadReferenceImages] = useState<string[]>([])
 
   // 使用上传 hook（支持多文件）
   const { uploading, uploadMultiple } = useMultiUpload({
     directory: 'objects',
   })
 
-  const appendReferenceImages = async (files: FileList | File[]) => {
+  const appendUploadImages = async (files: FileList | File[]) => {
     const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"))
     if (imageFiles.length === 0) return
 
-    // 上传到服务器
     const urls = await uploadMultiple(imageFiles)
     if (urls.length > 0) {
-      setReferenceImages((current) => [...current, ...urls])
+      setUploadReferenceImages((current) => [...current, ...urls])
       notify.success(`成功上传 ${urls.length} 张图片`)
     }
   }
@@ -93,23 +89,13 @@ export default function ObjectCreator({
     if (isBatch) {
       notify.success(`已选择批量上传文件：${files[0].name}`)
     } else {
-      await appendReferenceImages(files)
+      await appendUploadImages(files)
     }
 
     e.target.value = ""
   }
 
-  const handleReferenceDrop = async (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsReferenceDragOver(false)
-    if (e.dataTransfer.files.length > 0) {
-      await appendReferenceImages(e.dataTransfer.files)
-    }
-  }
 
-  const removeReferenceImage = (index: number) => {
-    setReferenceImages((current) => current.filter((_, currentIndex) => currentIndex !== index))
-  }
 
   const handleSubmit = () => {
     if (!objectName.trim()) {
@@ -117,21 +103,26 @@ export default function ObjectCreator({
       return
     }
 
-    if (genMethod === "model" && !prompt.trim()) {
+    if (genMethod === "model" && !generationConfig.prompt.trim()) {
       notify.warning("请输入物品描述")
       return
     }
-    
+
     if (isEditMode && initialData) {
       const updatedObject: ObjectEditData = {
         id: initialData.id,
         name: objectName,
         genMethod,
-        model: genMethod === "model" ? selectedModel : undefined,
-        prompt: genMethod === "model" ? prompt.trim() : undefined,
-        aspectRatio: genMethod === "model" ? aspectRatio : undefined,
-        referenceImage: referenceImages[0] || undefined,
-        referenceImages: referenceImages.length ? referenceImages : undefined,
+        model: genMethod === "model" ? generationConfig.model : undefined,
+        prompt: genMethod === "model" ? generationConfig.prompt.trim() : undefined,
+        aspectRatio: genMethod === "model" ? generationConfig.aspectRatio : undefined,
+        quantity: genMethod === "model" ? generationConfig.quantity : undefined,
+        referenceImage: genMethod === "model" 
+          ? generationConfig.referenceImages[0] || undefined 
+          : uploadReferenceImages[0] || undefined,
+        referenceImages: genMethod === "model" 
+          ? generationConfig.referenceImages.length ? generationConfig.referenceImages : undefined 
+          : uploadReferenceImages.length ? uploadReferenceImages : undefined,
       }
       onUpdate?.(updatedObject)
       notify.success(`物品 "${updatedObject.name}" 已更新`)
@@ -139,11 +130,16 @@ export default function ObjectCreator({
       const newObject: ObjectCreateData = {
         name: objectName,
         genMethod,
-        model: genMethod === "model" ? selectedModel : undefined,
-        prompt: genMethod === "model" ? prompt.trim() : undefined,
-        aspectRatio: genMethod === "model" ? aspectRatio : undefined,
-        referenceImage: referenceImages[0] || undefined,
-        referenceImages: referenceImages.length ? referenceImages : undefined,
+        model: genMethod === "model" ? generationConfig.model : undefined,
+        prompt: genMethod === "model" ? generationConfig.prompt.trim() : undefined,
+        aspectRatio: genMethod === "model" ? generationConfig.aspectRatio : undefined,
+        quantity: genMethod === "model" ? generationConfig.quantity : undefined,
+        referenceImage: genMethod === "model" 
+          ? generationConfig.referenceImages[0] || undefined 
+          : uploadReferenceImages[0] || undefined,
+        referenceImages: genMethod === "model" 
+          ? generationConfig.referenceImages.length ? generationConfig.referenceImages : undefined 
+          : uploadReferenceImages.length ? uploadReferenceImages : undefined,
       }
       onCreate?.(newObject)
       notify.success(`物品 "${newObject.name}" 创建成功`)
@@ -155,11 +151,15 @@ export default function ObjectCreator({
 
   const resetForm = () => {
     setObjectName("")
-    setPrompt("")
-    setAspectRatio("1:1")
-    setReferenceImages([])
+    setGenerationConfig({
+      model: "",
+      prompt: "",
+      aspectRatio: "1:1",
+      quantity: 1,
+      referenceImages: [],
+    })
+    setUploadReferenceImages([])
     setGenMethod("model")
-    setSelectedModel("sdxl")
     setTaskDrawerOpen(false)
   }
 
@@ -168,9 +168,12 @@ export default function ObjectCreator({
     if (isEditMode && initialData) {
       setObjectName(initialData.name)
       setGenMethod(initialData.genMethod as "model" | "upload" || "model")
-      setPrompt(initialData.description || "")
-      setReferenceImages(initialData.image ? [initialData.image] : [])
-      // 其他字段根据实际需求回填
+      setGenerationConfig(prev => ({
+        ...prev,
+        prompt: initialData.description || "",
+        referenceImages: initialData.image ? [initialData.image] : [],
+      }))
+      setUploadReferenceImages(initialData.image ? [initialData.image] : [])
     } else if (!open) {
       resetForm()
     }
@@ -344,8 +347,8 @@ export default function ObjectCreator({
                         <Loader2 className="w-8 h-8 text-[hsl(var(--primary))] animate-spin" />
                         <span className="text-sm text-[hsl(var(--on-surface))]">正在上传...</span>
                       </>
-                    ) : referenceImages[0] ? (
-                      <img src={referenceImages[0]} alt="参考图" className="w-full h-full object-cover" />
+                    ) : uploadReferenceImages[0] ? (
+                      <img src={uploadReferenceImages[0]} alt="参考图" className="w-full h-full object-cover" />
                     ) : (
                       <>
                         <ImagePlus className="w-8 h-8 text-[hsl(var(--secondary))] group-hover:text-[hsl(var(--primary))] transition-colors" />
@@ -381,178 +384,12 @@ export default function ObjectCreator({
             </div>
           )}
 
-          {/* Model Generation - Only show when genMethod is "model" */}
+          {/* Model Generation - Using ImageGenerationForm component */}
           {genMethod === "model" && (
-            <div className="space-y-6">
-              {/* Model Selection */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-[hsl(var(--on-surface))]">
-                  <span className="text-red-500 mr-1">*</span>选择模型
-                </label>
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="h-12 w-full justify-between rounded-xl bg-[hsl(var(--surface-container-low))] px-4 text-left text-sm font-normal text-[hsl(var(--on-surface))] hover:bg-[hsl(var(--surface-container-high))]"
-                    >
-                      <span>{models.find((model) => model.id === selectedModel)?.name ?? "选择生成模型"}</span>
-                      <ChevronDown className="h-4 w-4 text-[hsl(var(--secondary))]" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="start"
-                    sideOffset={10}
-                    className="w-[var(--radix-dropdown-menu-trigger-width)] rounded-xl border-[hsl(var(--outline-variant))]/30 bg-[hsl(var(--surface-container-lowest))] p-2 shadow-xl"
-                  >
-                    {models.map((model) => (
-                      <DropdownMenuItem
-                        key={model.id}
-                        onClick={() => setSelectedModel(model.id)}
-                        className={`min-h-[44px] rounded-lg px-3 text-base ${
-                          selectedModel === model.id
-                            ? "bg-[hsl(var(--primary))] text-white focus:bg-[hsl(var(--primary))] focus:text-white"
-                            : "text-[hsl(var(--on-surface))]"
-                        }`}
-                      >
-                        <Check
-                          className={`mr-3 h-4 w-4 ${
-                            selectedModel === model.id ? "opacity-100" : "opacity-0"
-                          }`}
-                        />
-                        <span>{model.name}</span>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <p className="text-xs text-[hsl(var(--secondary))]">
-                  {models.find((model) => model.id === selectedModel)?.desc}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-[hsl(var(--on-surface))]">
-                  <span className="text-red-500 mr-1">*</span>提示词
-                </label>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={(e) => handleFileUpload(e)}
-                  accept="image/jpeg,image/png,image/jpg"
-                  multiple
-                  className="hidden"
-                />
-                <div
-                  onDragOver={(e) => {
-                    e.preventDefault()
-                    setIsReferenceDragOver(true)
-                  }}
-                  onDragLeave={() => setIsReferenceDragOver(false)}
-                  onDrop={handleReferenceDrop}
-                  className={`rounded-2xl border bg-[hsl(var(--surface-container-low))] p-4 transition-all ${
-                    isReferenceDragOver
-                      ? "border-[hsl(var(--primary))]/60 bg-[hsl(var(--primary))]/5"
-                      : "border-[hsl(var(--outline-variant))]/35"
-                  }`}
-                >
-                  <div className="flex gap-4">
-                    {referenceImages.length === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => !uploading && fileInputRef.current?.click()}
-                        disabled={uploading}
-                        className="flex h-28 w-24 shrink-0 items-center justify-center rounded-2xl border-2 border-dashed border-[hsl(var(--outline-variant))]/45 bg-[hsl(var(--surface-container-lowest))] text-[hsl(var(--secondary))] transition-all hover:border-[hsl(var(--primary))]/45 hover:text-[hsl(var(--primary))] disabled:opacity-50"
-                      >
-                        {uploading ? (
-                          <Loader2 className="h-7 w-7 animate-spin" />
-                        ) : (
-                          <ImagePlus className="h-7 w-7" />
-                        )}
-                      </button>
-                    ) : null}
-
-                    <div className="min-w-0 flex-1">
-                      <textarea
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        placeholder={uploading ? "正在上传..." : "上传参考图、输入文字，描述你想生成的图片。"}
-                        disabled={uploading}
-                        className="min-h-[110px] w-full resize-none bg-transparent text-base text-[hsl(var(--on-surface))] placeholder:text-[hsl(var(--secondary))] focus:outline-none disabled:opacity-50"
-                      />
-                    </div>
-                  </div>
-
-                  {referenceImages.length > 0 || uploading ? (
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      {referenceImages.map((image, index) => (
-                        <div
-                          key={`${image}-${index}`}
-                          className="group relative h-20 w-20 overflow-hidden rounded-2xl border border-[hsl(var(--outline-variant))]/25 bg-[hsl(var(--surface-container-lowest))]"
-                        >
-                          <img src={image} alt={`参考图 ${index + 1}`} className="h-full w-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => removeReferenceImage(index)}
-                            className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity group-hover:opacity-100"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                      {uploading && (
-                        <div className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-[hsl(var(--outline-variant))]/40">
-                          <Loader2 className="h-5 w-5 animate-spin text-[hsl(var(--primary))]" />
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => !uploading && fileInputRef.current?.click()}
-                        disabled={uploading}
-                        className="flex h-20 w-20 items-center justify-center rounded-2xl border-2 border-dashed border-[hsl(var(--outline-variant))]/40 text-[hsl(var(--secondary))] transition-all hover:border-[hsl(var(--primary))]/45 hover:text-[hsl(var(--primary))] disabled:opacity-50"
-                      >
-                        <ImagePlus className="h-5 w-5" />
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-                <p className="text-xs text-[hsl(var(--secondary))]">
-                  支持拖入多张参考图，图片会作为多参考输入一起参与生成。
-                </p>
-              </div>
-
-              {/* Aspect Ratio Selection */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-[hsl(var(--on-surface))]">
-                  生成比例
-                </label>
-                <div className="flex gap-3">
-                  {[
-                    { value: "1:1", label: "1:1", desc: "正方形" },
-                    { value: "16:9", label: "16:9", desc: "横屏" },
-                    { value: "9:16", label: "9:16", desc: "竖屏" },
-                    { value: "4:3", label: "4:3", desc: "经典" },
-                  ].map((ratio) => (
-                    <button
-                      key={ratio.value}
-                      onClick={() => setAspectRatio(ratio.value as typeof aspectRatio)}
-                      className={`flex-1 py-3 px-2 rounded-xl border-2 transition-all ${
-                        aspectRatio === ratio.value
-                          ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary))]/5"
-                          : "border-[hsl(var(--outline-variant))]/30 bg-transparent hover:border-[hsl(var(--outline-variant))]/60"
-                      }`}
-                    >
-                      <span className={`block text-sm font-bold ${
-                        aspectRatio === ratio.value ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--on-surface))]"
-                      }`}>
-                        {ratio.label}
-                      </span>
-                      <span className="block text-[10px] text-[hsl(var(--secondary))] mt-0.5">
-                        {ratio.desc}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <ImageGenerationForm
+              value={generationConfig}
+              onChange={setGenerationConfig}
+            />
           )}
         </div>
 

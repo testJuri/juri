@@ -13,7 +13,7 @@ export type ObjectType = '武器' | '道具' | '服装' | '场景装饰' | 'AI�
 
 export type GenerationMethod = 'ai' | 'upload' | 'mix'
 
-export type WorkflowSourceType = 'blank' | 'episode' | 'scene' | 'character' | 'object'
+export type WorkflowSourceType = 'blank' | 'episode' | 'scene' | 'character' | 'object' | string
 export type WorkflowStatus = 'draft' | 'active' | 'archived'
 
 // ==================== 片段 (Episode) ====================
@@ -82,7 +82,7 @@ export interface CharacterCreateData {
   name: string
   gender: string
   ageGroup: string
-  role: 'main' | 'support'
+  role?: 'main' | 'support'
   genMethod: string
   model: string
   style?: string
@@ -93,6 +93,10 @@ export interface CharacterCreateData {
   quantity?: number
   isRealPerson?: boolean
   batchReferenceArchive?: string
+}
+
+export interface CharacterEditData extends CharacterCreateData {
+  id: number
 }
 
 // ==================== 物品 (Object) ====================
@@ -144,4 +148,10 @@ export interface Workflow {
   sourceAssetId?: number
   status: WorkflowStatus
   modified: string
+  thumbnail?: string
+  canvasData?: {
+    nodes: unknown[]
+    edges: unknown[]
+    viewport?: { x: number; y: number; zoom: number }
+  }
 }

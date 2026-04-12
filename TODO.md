@@ -1,225 +1,183 @@
 # MangaCanvas 待办清单
 
-> 当前状态：**API 已大量对接**，剩余 35 个接口待接入。
+> 当前状态：**API 已大量对接**，剩余 16 个接口待接入。
 > 
 > **后端开发请参考**: [`BACKEND_API_SPEC_V2.md`](./BACKEND_API_SPEC_V2.md)
 
 ---
 
-## 🔴 P0 — 核心阻塞（文件上传）
-
-### 1. 文件上传模块 🚧
-- [x] `POST /api/v1/upload/presigned` - 预签名上传 URL
-- [x] `POST /api/v1/upload/confirm` - 上传完成确认
-- [x] 创建 `uploadApi` 模块
-- [x] 创建 `useUpload` / `useMultiUpload` Hooks
-- [x] **Creator 组件对接真实上传** ✅
-  - [x] `CharacterCreator` - 角色参考图上传
-  - [x] `SceneCreator` - 场景参考图上传
-  - [x] `ObjectCreator` - 物品参考图上传
-  - [x] 替换 `URL.createObjectURL` 为真实上传流程
-
----
-
-## 🔴 P0 — 核心流程
-
-### 2. 片段卡片交互变更
-- [ ] 点击片段卡片 → 展开抽屉（而非跳转页面）
-- [ ] 抽屉内支持文生视频 / 图生视频操作
-- [ ] 移除片段详情页独立路由（或保留为备用入口）
-
----
-
-## 🟠 P1 — 重要功能（API 对接）
-
-### 3. 组织管理模块
-- [ ] `POST /api/v1/organizations` - 创建组织
-- [ ] `GET /api/v1/organizations` - 组织列表
-- [ ] `GET /api/v1/organizations/{id}` - 组织详情
-- [ ] `POST /api/v1/organizations/{id}/members` - 添加成员
-- [ ] `DELETE /api/v1/organizations/{id}/members/{userId}` - 移除成员
-- [ ] `GET /api/v1/users/me/organizations` - 我的组织列表
-
-### 4. 项目管理补充
-- [ ] `POST /api/v1/projects/{id}/duplicate` - 复制项目
-- [ ] 片段关联管理 `PATCH /episodes/{id}/relations`
-
-### 5. 画布工作流补充
-- [ ] `POST /api/v1/projects/{id}/canvas-workflows` - 创建工作流
-- [ ] `PUT /api/v1/projects/{id}/canvas-workflows/{id}` - 保存工作流
-- [ ] 工作流成员管理 CRUD
-
-### 6. 项目资产补充
-- [ ] `POST /api/v1/projects/{id}/assets` - 登记资产
-- [ ] `PUT /api/v1/projects/{id}/assets/{id}` - 更新资产
-- [ ] `DELETE /api/v1/projects/{id}/assets/{id}` - 删除资产
-
-### 7. AI 模型网关 - 核心能力
-- [ ] `POST /api/v1/ai/chat/completions` - 文本对话
-- [ ] `POST /api/v1/ai/video/generations` - 视频生成（文生视频/图生视频）
-
-### 8. 积分系统
-- [ ] `GET /api/v1/credits` - 积分余额
-- [ ] `GET /api/v1/credits/history` - 积分流水
-
----
-
-## 🟠 P1 — Dashboard 与导航
-
-### 9. Dashboard 功能补全
-- [ ] 项目卡片更多操作（DropdownMenu：重命名、删除、复制）
-- [ ] 侧边栏导航高亮（仪表盘/项目当前页高亮）
-- [ ] 侧边栏其他页面壳（资源 / 团队 / 设置 / 分析）
-
-### 10. 文档与工程收尾
-- [ ] README 去重，避免与 `BACKEND_API_SPEC.md` 重复
-- [x] 补全请求层使用文档（上传 API、useUpload Hook）✅
-- [ ] 补一份"前端页面真实入口图"，明确 `src/pages/project/index.tsx` 才是当前项目工作台主入口
-- [ ] 梳理并标记历史遗留页面/文件（如 `src/pages/ProjectDetail.tsx`）
-- [ ] 给请求层补一个最小业务示例（推荐 `src/api/services/project.ts`）
-
----
-
-## 🟡 P2 — 辅助功能（API 对接）
-
-### 11. 认证补充
-- [ ] `POST /api/v1/auth/oauth/{provider}` - OAuth 登录
-- [ ] `GET /api/v1/health` - 健康检查
-
-### 12. AI 模型网关 - 扩展能力
-- [ ] `POST /api/v1/ai/audio/speech` - 语音合成（TTS）
-- [ ] `POST /api/v1/ai/embeddings` - 文本向量化
-- [ ] `GET /api/v1/ai/models` - 模型列表
-- [ ] `GET /api/v1/ai/balance` - 余额查询
-- [ ] `GET /api/v1/ai/bills` - 账单记录
-
-### 13. 计费额度
-- [ ] `GET /api/v1/billing/enterprise/quota` - 企业额度
-- [ ] `GET /api/v1/billing/organizations/{id}/quota` - 组织额度
-- [ ] `GET /api/v1/billing/projects/{id}/quota` - 项目额度
-- [ ] `GET /api/v1/billing/projects/{id}/users/{userId}/quota` - 用户项目额度
-
----
-
-## 🟡 P2 — 认证与首页
-
-### 14. 认证系统
-- [ ] Header 根据登录状态显示用户头像
-
-### 15. 首页交互
-- [ ] 场景编排卡片点击跳转 `/dashboard`
-
----
-
-## 🟢 P3 — 辅助功能
-
-### 16. 顶部操作按钮
-- [ ] 导出视频 - Mock 提示
-- [ ] 分享 - 复制当前 URL
-
----
-
-## 🔵 P4 — 高级功能
-
-### 17. 图片改创 (`remix` tab)
-- [ ] 创建 `RemixTab.tsx`（原图上传+风格选择+生成结果）
-- [ ] Mock 生成流程
-
-### 18. Pricing CTA 闭环
-- [ ] 立即升级 → 支付模拟 Dialog
-- [ ] 联系销售 → 跳转 `/contact`
-
----
-
-## 🟣 P5 — 体验优化
-
-### 19. 动画与过渡
-- [ ] 卡片进入动画（stagger 效果）
-- [ ] 页面切换过渡效果
-
-### 20. 空状态设计
-- [ ] 各标签页空状态插图和文案
-
-### 21. 响应式优化
-- [ ] 移动端侧边栏折叠
-- [ ] 抽屉移动端全屏
-
----
-
-## 🐜 antd 渐进替代方案
-
-> 目标：逐步收敛到 `shadcn/ui + Radix + Tailwind`
-
-### Phase 1 - 先清理全局副作用与反馈层
-- [ ] 移除 `src/pages/project/WorkflowCanvas.tsx` 中的 `antd/dist/reset.css`
-- [ ] 为无限画布接入项目统一反馈层，替代 `antd message`
-- [ ] 将 `Canvas.tsx` 中的 `Modal.confirm` 替换为项目内确认弹层
-- [ ] 将 `Canvas.tsx` / 节点工具栏中的 `Tooltip` 替换为项目内 tooltip / title 方案
-
-### Phase 2 - 替换画布外层弹窗与面板
-- [ ] 替换 `src/features/infinite-canvas/components/ApiSettings.tsx`
-- [ ] 替换 `src/features/infinite-canvas/components/DownloadModal.tsx`
-- [ ] 替换 `src/features/infinite-canvas/components/PreviewModal.tsx`
-- [ ] 替换 `src/features/infinite-canvas/components/SaveToMaterialsModal.tsx`
-- [ ] 收敛画布页顶部与侧边面板的图标来源，优先改用 `lucide-react`
-
-### Phase 3 - 替换节点内部表单控件
-- [ ] 替换 `nodes/TextNode.tsx`
-- [ ] 替换 `nodes/ImageNode.tsx`
-- [ ] 替换 `nodes/ImageConfigNode.tsx`
-- [ ] 替换 `nodes/VideoConfigNode.tsx`
-- [ ] 替换 `nodes/EffectConfigNode.tsx`
-- [ ] 替换 `nodes/TemplateEffectNode.tsx`
-- [ ] 替换 `nodes/VideoNode.tsx`
-
-### Phase 4 - 收尾与依赖下线
-- [ ] 全仓搜索确认无 `from "antd"` / `from 'antd'`
-- [ ] 全仓搜索确认无 `@ant-design/icons`
-- [ ] 删除 `package.json` 中 `antd` 与 `@ant-design/icons`
-- [ ] 跑通 `npm run build` 与关键交互回归
-
----
-
-## 📊 任务统计
-
-| 优先级 | 任务数 | 完成数 | 进度 |
-|--------|--------|--------|------|
-| 🔴 P0 - 核心阻塞 | 5 | 0 | 0% |
-| 🟠 P1 - 重要功能 | 22 | 0 | 0% |
-| 🟡 P2 - 辅助功能 | 16 | 0 | 0% |
-| 🟢 P3 - 辅助功能 | 2 | 0 | 0% |
-| 🔵 P4 - 高级功能 | 4 | 0 | 0% |
-| 🟣 P5 - 体验优化 | 5 | 0 | 0% |
-| 🐜 antd 替代 | 15 | 0 | 0% |
-| **总计** | **69** | **0** | **进行中** |
-
-### API 对接统计
+## 📊 接口对接统计（共 66 个接口）
 
 | 模块 | 已对接 | 未对接 | 总计 |
 |------|--------|--------|------|
+| Health | 0 | 1 | 1 |
 | Auth | 4 | 1 (OAuth) | 5 |
 | Organizations | 0 | 6 | 6 |
-| Projects | 6 | 2 | 8 |
+| Users | 0 | 1 | 1 |
+| Projects | 5 | 1 (复制) | 6 |
 | Project Members | 4 | 0 | 4 |
 | Characters | 5 | 0 | 5 |
 | Scenes | 5 | 0 | 5 |
 | Objects | 5 | 0 | 5 |
-| Episodes | 5 | 1 | 6 |
-| Workflows | 3 | 3 | 6 |
-| Assets | 1 | 2 | 3 |
-| Upload | 4 | 0 | 4 |
-| AI Gateway | 1 | 7 | 8 |
-| Credits/Billing | 0 | 6 | 6 |
-| **总计** | **43** | **26** | **69** |
+| Episodes | 5 | 1 (关联) | 6 |
+| Workflows | 9 | 0 | 9 |
+| Assets | 1 | 3 | 4 |
+| Upload | 3 | 0 | 3 |
+| AI Gateway | 1 | 0* | 1* |
+| Credits | 0 | 2 | 2 |
+| Billing | 0 | 8 | 8 |
+| **总计** | **50** | **16** | **66** |
+
+> *注：AI Gateway 目前直接调用 DashScope，未走后端网关。
 
 ---
 
-*最后更新：2026-04-10*
+## 🔴 P0 — 核心阻塞
+
+### 1. 片段关联管理
+- [ ] `PATCH /api/v1/projects/{projectId}/episodes/{episodeId}/relations` - 更新片段关联（角色/场景/物品）
+
+---
+
+## 🟠 P1 — 重要功能
+
+### 2. 项目资产补充（3个接口）
+- [ ] `POST /api/v1/projects/{projectId}/assets` - 登记资产
+- [ ] `GET /api/v1/projects/{projectId}/assets/{assetId}` - 获取资产详情
+- [ ] `PUT /api/v1/projects/{projectId}/assets/{assetId}` - 更新资产
+- [ ] `DELETE /api/v1/projects/{projectId}/assets/{assetId}` - 删除资产
+
+### 3. 项目管理补充
+- [ ] `POST /api/v1/projects/{projectId}/duplicate` - 复制项目
+
+### 4. 组织管理模块（6个接口）
+- [ ] `POST /api/v1/organizations` - 创建组织
+- [ ] `GET /api/v1/organizations` - 组织列表
+- [ ] `GET /api/v1/organizations/{organizationId}` - 组织详情
+- [ ] `POST /api/v1/organizations/{organizationId}/members` - 添加成员
+- [ ] `DELETE /api/v1/organizations/{organizationId}/members/{userId}` - 移除成员
+- [ ] `GET /api/v1/users/me/organizations` - 我的组织列表
+
+---
+
+## 🟡 P2 — 辅助功能
+
+### 5. 认证补充
+- [ ] `POST /api/v1/auth/oauth/{provider}` - OAuth 登录
+- [ ] `GET /api/v1/health` - 健康检查
+
+### 6. 积分系统（2个接口）
+- [ ] `GET /api/v1/credits` - 积分余额
+- [ ] `GET /api/v1/credits/history` - 积分流水
+
+### 7. 计费额度（8个接口）
+- [ ] `GET /api/v1/billing/enterprise/quota` - 企业额度
+- [ ] `PUT /api/v1/billing/enterprise/quota` - 更新企业额度
+- [ ] `GET /api/v1/billing/organizations/{organizationId}/quota` - 组织额度
+- [ ] `PUT /api/v1/billing/organizations/{organizationId}/quota` - 更新组织额度
+- [ ] `GET /api/v1/billing/projects/{projectId}/quota` - 项目额度
+- [ ] `PUT /api/v1/billing/projects/{projectId}/quota` - 更新项目额度
+- [ ] `GET /api/v1/billing/projects/{projectId}/users/{userId}/quota` - 用户项目额度
+- [ ] `PUT /api/v1/billing/projects/{projectId}/users/{userId}/quota` - 更新用户项目额度
+
+---
+
+## 🟢 P3 — 体验优化
+
+### 8. Dashboard 功能补全
+- [ ] 项目卡片更多操作（DropdownMenu：重命名、删除、复制）
+- [ ] 侧边栏导航高亮（仪表盘/项目当前页高亮）
+- [ ] 侧边栏其他页面壳（资源 / 团队 / 设置 / 分析）
+
+### 9. 认证系统
+- [ ] Header 根据登录状态显示用户头像
+
+### 10. 首页交互
+- [ ] 场景编排卡片点击跳转 `/dashboard`
+
+---
+
+## ✅ 已对接接口清单（50个）
+
+### 认证 Auth（4个）
+- [x] `POST /api/v1/auth/register` - 注册
+- [x] `POST /api/v1/auth/login` - 登录
+- [x] `POST /api/v1/auth/refresh` - 刷新 Token
+- [x] `GET /api/v1/auth/me` - 当前用户
+
+### 项目 Projects（5个）
+- [x] `POST /api/v1/projects` - 创建项目
+- [x] `GET /api/v1/projects` - 项目列表
+- [x] `GET /api/v1/projects/{projectId}` - 项目详情
+- [x] `PUT /api/v1/projects/{projectId}` - 更新项目
+- [x] `DELETE /api/v1/projects/{projectId}` - 删除项目
+
+### 项目成员 Project Members（4个）
+- [x] `GET /api/v1/projects/{projectId}/members` - 成员列表
+- [x] `POST /api/v1/projects/{projectId}/members` - 添加成员
+- [x] `PATCH /api/v1/projects/{projectId}/members/{userId}` - 更新成员角色
+- [x] `DELETE /api/v1/projects/{projectId}/members/{userId}` - 移除成员
+
+### 角色 Characters（5个）
+- [x] `GET /api/v1/projects/{projectId}/characters` - 角色列表
+- [x] `POST /api/v1/projects/{projectId}/characters` - 创建角色
+- [x] `GET /api/v1/projects/{projectId}/characters/{characterId}` - 角色详情
+- [x] `PUT /api/v1/projects/{projectId}/characters/{characterId}` - 更新角色
+- [x] `DELETE /api/v1/projects/{projectId}/characters/{characterId}` - 删除角色
+
+### 场景 Scenes（5个）
+- [x] `GET /api/v1/projects/{projectId}/scenes` - 场景列表
+- [x] `POST /api/v1/projects/{projectId}/scenes` - 创建场景
+- [x] `GET /api/v1/projects/{projectId}/scenes/{sceneId}` - 场景详情
+- [x] `PUT /api/v1/projects/{projectId}/scenes/{sceneId}` - 更新场景
+- [x] `DELETE /api/v1/projects/{projectId}/scenes/{sceneId}` - 删除场景
+
+### 物品 Objects（5个）
+- [x] `GET /api/v1/projects/{projectId}/objects` - 物品列表
+- [x] `POST /api/v1/projects/{projectId}/objects` - 创建物品
+- [x] `GET /api/v1/projects/{projectId}/objects/{objectId}` - 物品详情
+- [x] `PUT /api/v1/projects/{projectId}/objects/{objectId}` - 更新物品
+- [x] `DELETE /api/v1/projects/{projectId}/objects/{objectId}` - 删除物品
+
+### 片段 Episodes（5个）
+- [x] `GET /api/v1/projects/{projectId}/episodes` - 片段列表
+- [x] `POST /api/v1/projects/{projectId}/episodes` - 创建片段
+- [x] `GET /api/v1/projects/{projectId}/episodes/{episodeId}` - 片段详情
+- [x] `PUT /api/v1/projects/{projectId}/episodes/{episodeId}` - 更新片段
+- [x] `DELETE /api/v1/projects/{projectId}/episodes/{episodeId}` - 删除片段
+
+### 画布工作流 Canvas Workflows（9个）
+- [x] `GET /api/v1/projects/{projectId}/canvas-workflows` - 工作流列表
+- [x] `POST /api/v1/projects/{projectId}/canvas-workflows` - 创建工作流
+- [x] `GET /api/v1/projects/{projectId}/canvas-workflows/{workflowId}` - 工作流详情
+- [x] `PUT /api/v1/projects/{projectId}/canvas-workflows/{workflowId}` - 更新工作流
+- [x] `DELETE /api/v1/projects/{projectId}/canvas-workflows/{workflowId}` - 删除工作流
+- [x] `GET /api/v1/projects/{projectId}/canvas-workflows/{workflowId}/members` - 获取工作流成员
+- [x] `POST /api/v1/projects/{projectId}/canvas-workflows/{workflowId}/members` - 添加工作流成员
+- [x] `PATCH /api/v1/projects/{projectId}/canvas-workflows/{workflowId}/members/{userId}` - 更新成员角色
+- [x] `DELETE /api/v1/projects/{projectId}/canvas-workflows/{workflowId}/members/{userId}` - 移除工作流成员
+
+### 项目资产 Assets（1个）
+- [x] `GET /api/v1/projects/{projectId}/assets` - 资产列表
+
+### 文件上传 Upload（3个）
+- [x] `POST /api/v1/upload/presigned` - 预签名上传 URL
+- [x] `POST /api/v1/upload/confirm` - 上传完成确认
+- [x] `GET /api/v1/upload/files` - 文件列表
+
+### AI 图像生成（1个）
+- [x] `POST /api/v1/ai/images/generations` - 图像生成
+
+---
 
 ## 📝 更新日志
 
+### 2026-04-12
+- 重新梳理所有接口，基于 `BACKEND_API_SPEC_V2.md` 完整统计
+- 更新接口对接统计：已对接 50 个，未对接 16 个
+- 重新分类待办事项，按优先级排序
+
 ### 2026-04-10
-- 🔄 更新策略说明：API 已大量对接，不再是纯前端 Mock
-- 📝 重新梳理 API 对接情况，列出剩余 30 个待对接接口
-- ✅ 清理已完成的历史任务
-- 📝 重新整理待办清单，按优先级分类
+- 更新策略说明：API 已大量对接，不再是纯前端 Mock
+- 重新梳理 API 对接情况
+

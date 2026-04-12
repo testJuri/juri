@@ -4,9 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix"
-    ]
+    "*.{ts,tsx}": "eslint --fix"
   },
   "scripts": {
     "dev": "VITE_MOCK_MODE=false vite",

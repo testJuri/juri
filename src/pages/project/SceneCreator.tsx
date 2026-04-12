@@ -21,7 +21,7 @@ import {
   Check,
   Loader2
 } from "lucide-react"
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect } from "react"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
 import { useImageModels } from "@/features/infinite-canvas/hooks"
 import { useUpload } from "@/hooks/useUpload"
@@ -64,14 +64,14 @@ export default function SceneCreator({
   const { models: imageModels, loading: modelsLoading, error: modelsError, refetch } = useImageModels()
   const [selectedModel, setSelectedModel] = useState<string>("")
   
-  // 当模型列表加载完成时，默认选中第一个
+  // 当模型列表加载完成时，默认选中第一个（只在初始加载时执行一次）
   useEffect(() => {
-    if (imageModels.length > 0 && !selectedModel) {
+    if (imageModels.length > 0 && !selectedModel && !initializedRef.current) {
       setSelectedModel(imageModels[0].id)
     }
-  }, [imageModels, selectedModel])
+  }, [imageModels])
   const [genMethod, setGenMethod] = useState("model")
-  const [seedType, setSeedType] = useState("fixed")
+
   const [distance, setDistance] = useState([8.0])
   const [zoom, setZoom] = useState(0.6)
   const [sceneName, setSceneName] = useState("")
@@ -80,6 +80,10 @@ export default function SceneCreator({
   const [batchArchiveName, setBatchArchiveName] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const batchFileInputRef = useRef<HTMLInputElement>(null)
+  
+  // 用于防止 useEffect 重复执行的 ref
+  const initializedRef = useRef(false)
+  const prevOpenRef = useRef(open)
 
   // 使用上传 hook
   const { uploading, progress, upload } = useUpload({
@@ -93,8 +97,8 @@ export default function SceneCreator({
     },
   })
 
-  // 重置表单的回调函数
-  const resetForm = useCallback(() => {
+  // 重置表单的函数
+  const resetForm = () => {
     setSceneName("")
     setDescription("")
     setReferenceImage(null)
@@ -103,21 +107,35 @@ export default function SceneCreator({
     setGenMethod("model")
     setDistance([8.0])
     setZoom(0.6)
-  }, [imageModels])
+  }
 
-  // 编辑模式下回填数据
+  // 编辑模式下回填数据 / 关闭时重置表单
   useEffect(() => {
+    // 只在 open 从 false 变为 true 时执行初始化
+    const isOpening = open && !prevOpenRef.current
+    prevOpenRef.current = open
+    
+    if (!open) {
+      initializedRef.current = false
+      return
+    }
+    
+    // 只在打开时执行一次
+    if (!isOpening || initializedRef.current) return
+    
+    initializedRef.current = true
+    
     if (isEditMode && initialData) {
       setSceneName(initialData.name)
       setGenMethod(initialData.genMethod || "model")
       setSelectedModel(initialData.model || imageModels[0]?.id || "")
       setDescription(initialData.description || "")
       // 其他字段根据实际情况回填
-    } else if (!open) {
-      // 关闭时重置表单
+    } else {
+      // 新建模式重置表单
       resetForm()
     }
-  }, [isEditMode, initialData, open, imageModels, resetForm])
+  }, [open])
 
   const generationMethods = [
     { id: "model", label: "通过模型生成场景" },
@@ -429,30 +447,7 @@ export default function SceneCreator({
             </>
             )}
 
-            {/* Seed Control - 仅在模型生成模式下显示 */}
-            {genMethod === "model" && (
-              <div className="space-y-3">
-                <label className="text-sm font-medium">种子控制</label>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setSeedType("random")}
-                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${
-                      seedType === "random" ? "bg-[hsl(var(--surface-container-high))]" : "bg-transparent text-[hsl(var(--secondary))]"
-                    }`}
-                  >
-                    随机种子
-                  </button>
-                  <button
-                    onClick={() => setSeedType("fixed")}
-                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${
-                      seedType === "fixed" ? "signature-gradient text-white" : "bg-transparent text-[hsl(var(--secondary))]"
-                    }`}
-                  >
-                    固定种子
-                  </button>
-                </div>
-              </div>
-            )}
+
           </div>
 
         </div>

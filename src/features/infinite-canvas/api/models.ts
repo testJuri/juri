@@ -68,14 +68,14 @@ export const modelsApi = {
       }
       
       // 映射 API 字段到 ModelDTO
-      const models: ModelDTO[] = rawModels.map((m: unknown) => {
+      const models = rawModels.map((m: unknown): ModelDTO => {
         const model = m as Record<string, unknown>
         return {
           id: String(model.model_id || model.id || ''),  // API 使用 model_id
           model_id: String(model.model_id || ''),
           name: String(model.name || ''),
           provider: String(model.provider || 'unknown'),
-          modality: String(model.modality || ''),
+          modality: String(model.modality || '') as ModelModality,
           description: String(model.modality_label || model.description || ''),
           isEnabled: model.status === 'active' || model.isEnabled !== false,
           status: String(model.status || ''),

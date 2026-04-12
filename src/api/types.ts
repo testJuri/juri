@@ -232,3 +232,65 @@ export interface ModelDTO {
   updatedAt?: string
   status?: string  // API 返回的启用状态字段
 }
+
+// ==================== 工作流相关类型 ====================
+
+export interface WorkflowDTO {
+  id: string
+  organizationId?: number
+  projectId: number
+  name: string
+  thumbnail?: string | null
+  sourceType?: 'blank' | 'episode' | 'scene' | 'character' | 'object'
+  sourceAssetId?: number | null
+  status?: 'draft' | 'active' | 'archived'
+  canvasData?: {
+    nodes: unknown[]
+    edges: unknown[]
+    viewport?: { x: number; y: number; zoom: number }
+  }
+  createdBy?: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface CreateWorkflowInput {
+  name: string
+  thumbnail?: string
+  sourceType?: 'blank' | 'episode' | 'scene' | 'character' | 'object'
+  sourceAssetId?: number
+  sourceEpisodeId?: number
+  canvasData?: {
+    nodes: unknown[]
+    edges: unknown[]
+    viewport?: { x: number; y: number; zoom: number }
+  }
+}
+
+export interface UpdateWorkflowInput {
+  name?: string
+  thumbnail?: string
+  sourceType?: 'blank' | 'episode' | 'scene' | 'character' | 'object'
+  sourceAssetId?: number
+  status?: 'draft' | 'active' | 'archived'
+  canvasData?: {
+    nodes: unknown[]
+    edges: unknown[]
+    viewport?: { x: number; y: number; zoom: number }
+  }
+}
+
+export interface WorkflowMemberDTO {
+  userId: number
+  workflowId?: string
+  projectId?: number
+  role: 'editor' | 'viewer'
+  joinedAt?: string
+  assignedBy?: number
+  user?: {
+    id: number
+    username: string
+    avatar: string | null
+    email?: string
+  }
+}
