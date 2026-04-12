@@ -160,6 +160,7 @@ export default function CharacterCreator({
       // 新建模式重置表单
       resetForm()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   const resetForm = () => {

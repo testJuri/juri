@@ -69,6 +69,7 @@ export default function SceneCreator({
     if (imageModels.length > 0 && !selectedModel && !initializedRef.current) {
       setSelectedModel(imageModels[0].id)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [imageModels])
   const [genMethod, setGenMethod] = useState("model")
 
@@ -135,6 +136,7 @@ export default function SceneCreator({
       // 新建模式重置表单
       resetForm()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   const generationMethods = [
