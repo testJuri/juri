@@ -3,7 +3,7 @@ import { Handle, Position, NodeProps } from 'reactflow';
 import { Input, Button, Tooltip, message } from 'antd';
 import { LoadingOutlined, CopyOutlined, DeleteOutlined, PictureOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import { useCanvasStore } from '../../stores/canvasStore';
-import { streamDashScopeChatCompletions } from '../../api/chat';
+import { chatService } from '@/api/aigc';
 import type { CustomNode } from '../../types';
 
 const { TextArea } = Input;
@@ -92,7 +92,7 @@ const TextNode: React.FC<NodeProps<CustomNode['data']>> = ({ id, data, selected 
     let polishedText = '';
 
     try {
-      const stream = streamDashScopeChatCompletions({
+      const stream = chatService.streamDashScope({
         model: 'qwen-plus',
         messages: [
           {

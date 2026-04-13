@@ -5,7 +5,7 @@ import { ThunderboltOutlined, CopyOutlined, DeleteOutlined } from '@ant-design/i
 import { useCanvasStore } from '../../stores/canvasStore';
 import { useImageGeneration } from '../../hooks';
 import { IMAGE_MODELS } from '../../config/models';
-import { isDashScopeI2IModel } from '../../api/image';
+import { isI2IModel } from '@/api/aigc';
 import type { CustomNode } from '../../types';
 
 // 画面比例选项
@@ -80,7 +80,7 @@ const ImageConfigNode: React.FC<NodeProps<CustomNode['data']>> = ({ id, data, se
   const [localRatio, setLocalRatio] = useState(getSizeRatio(initialValues.size));
 
   const currentModel = useMemo(() => IMAGE_MODELS.find((m) => m.key === localModel), [localModel]);
-  const isI2IModel = useMemo(() => isDashScopeI2IModel(localModel), [localModel]);
+  const isI2I = useMemo(() => isI2IModel(localModel), [localModel]);
   
   // Get size options based on current model and quality
   const sizeOptions = useMemo(() => {
@@ -180,13 +180,13 @@ const ImageConfigNode: React.FC<NodeProps<CustomNode['data']>> = ({ id, data, se
     const { prompt, refImages } = getConnectedInputs();
 
     // 图生图模式需要参考图片
-    if (isI2IModel && refImages.length === 0) {
+    if (isI2I && refImages.length === 0) {
       message.warning('图生图模式需要连接图片节点（参考图）');
       return;
     }
 
     // 文生图模式需要提示词
-    if (!isI2IModel && !prompt) {
+    if (!isI2I && !prompt) {
       message.warning('请连接文本节点（提示词）');
       return;
     }
@@ -227,7 +227,7 @@ const ImageConfigNode: React.FC<NodeProps<CustomNode['data']>> = ({ id, data, se
         size: localSize,
         quality: localQuality,
         image: refImages[0],
-        images: isI2IModel ? refImages : undefined,
+        images: isI2I ? refImages : undefined,
         n: 1,
       });
 

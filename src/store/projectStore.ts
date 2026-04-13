@@ -51,7 +51,6 @@ interface ProjectActions {
   loadCharacters: (projectId: number, role?: 'main' | 'support') => Promise<void>
   loadObjects: (projectId: number, type?: ObjectDTO['type']) => Promise<void>
   loadEpisodes: (projectId: number, status?: EpisodeDTO['status']) => Promise<void>
-  loadWorkflows: (projectId: number, params?: { page?: number; size?: number }) => Promise<void>
   createEpisode: (projectId: number, data: EpisodeCreateData) => Promise<Episode | null>
   updateEpisode: (projectId: number, id: number, data: Partial<Episode>) => Promise<Episode | null>
   deleteEpisode: (projectId: number, id: number) => Promise<boolean>
@@ -236,26 +235,6 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       set({
         isLoading: false,
         error: error instanceof Error ? error.message : '加载片段列表失败',
-      })
-    }
-  },
-
-  loadWorkflows: async (projectId, params) => {
-    set({ isLoading: true, error: null })
-    try {
-      const response = await projectApi.workflows.getAll(projectId, params)
-      if (!response.success) {
-        throw new Error(response.message || '加载工作流列表失败')
-      }
-      set({
-        isLoading: false,
-        workflows: response.data.list,
-        workflowPagination: response.data.pagination,
-      })
-    } catch (error) {
-      set({
-        isLoading: false,
-        error: error instanceof Error ? error.message : '加载工作流列表失败',
       })
     }
   },
@@ -537,10 +516,3 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
   reset: () => set({ ...initialState }),
 }))
-
-export const useScenesSelector = () => useProjectStore((state) => state.assets.scenes)
-export const useCharactersSelector = () => useProjectStore((state) => state.assets.characters)
-export const useObjectsSelector = () => useProjectStore((state) => state.assets.objects)
-export const useEpisodesSelector = () => useProjectStore((state) => state.assets.episodes)
-export const useActiveTabSelector = () => useProjectStore((state) => state.activeTab)
-export const useUIStateSelector = () => useProjectStore((state) => state.ui)

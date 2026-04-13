@@ -1,10 +1,9 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
-import { X, ImagePlus, Package, LayoutList, CheckCircle2, Clock, Loader2 } from "lucide-react"
+import { X, LayoutList, CheckCircle2, Clock } from "lucide-react"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
-import { useMultiUpload } from "@/hooks/useUpload"
 import { ImageGenerationForm, type ImageGenerationConfig } from "@/components/forms/ImageGenerationForm"
 import type { ObjectItem } from "@/types"
 
@@ -48,11 +47,8 @@ export default function ObjectCreator({
 }: ObjectCreatorProps) {
   const { notify } = useFeedback()
   const isEditMode = mode === 'edit' && initialData != null
-  const [genMethod, setGenMethod] = useState<"model" | "upload">("model")
   const [objectName, setObjectName] = useState("")
   const [taskDrawerOpen, setTaskDrawerOpen] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const batchFileInputRef = useRef<HTMLInputElement>(null)
 
   // AI 生成配置
   const [generationConfig, setGenerationConfig] = useState<ImageGenerationConfig>({
@@ -63,38 +59,6 @@ export default function ObjectCreator({
     referenceImages: [],
   })
 
-  // 上传模式下的参考图
-  const [uploadReferenceImages, setUploadReferenceImages] = useState<string[]>([])
-
-  // 使用上传 hook（支持多文件）
-  const { uploading, uploadMultiple } = useMultiUpload({
-    directory: 'objects',
-  })
-
-  const appendUploadImages = async (files: FileList | File[]) => {
-    const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"))
-    if (imageFiles.length === 0) return
-
-    const urls = await uploadMultiple(imageFiles)
-    if (urls.length > 0) {
-      setUploadReferenceImages((current) => [...current, ...urls])
-      notify.success(`成功上传 ${urls.length} 张图片`)
-    }
-  }
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isBatch = false) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
-
-    if (isBatch) {
-      notify.success(`已选择批量上传文件：${files[0].name}`)
-    } else {
-      await appendUploadImages(files)
-    }
-
-    e.target.value = ""
-  }
-
 
 
   const handleSubmit = () => {
@@ -103,7 +67,7 @@ export default function ObjectCreator({
       return
     }
 
-    if (genMethod === "model" && !generationConfig.prompt.trim()) {
+    if (!generationConfig.prompt.trim()) {
       notify.warning("请输入物品描述")
       return
     }
@@ -112,34 +76,26 @@ export default function ObjectCreator({
       const updatedObject: ObjectEditData = {
         id: initialData.id,
         name: objectName,
-        genMethod,
-        model: genMethod === "model" ? generationConfig.model : undefined,
-        prompt: genMethod === "model" ? generationConfig.prompt.trim() : undefined,
-        aspectRatio: genMethod === "model" ? generationConfig.aspectRatio : undefined,
-        quantity: genMethod === "model" ? generationConfig.quantity : undefined,
-        referenceImage: genMethod === "model" 
-          ? generationConfig.referenceImages[0] || undefined 
-          : uploadReferenceImages[0] || undefined,
-        referenceImages: genMethod === "model" 
-          ? generationConfig.referenceImages.length ? generationConfig.referenceImages : undefined 
-          : uploadReferenceImages.length ? uploadReferenceImages : undefined,
+        genMethod: "model",
+        model: generationConfig.model,
+        prompt: generationConfig.prompt.trim(),
+        aspectRatio: generationConfig.aspectRatio,
+        quantity: generationConfig.quantity,
+        referenceImage: generationConfig.referenceImages[0] || undefined,
+        referenceImages: generationConfig.referenceImages.length ? generationConfig.referenceImages : undefined,
       }
       onUpdate?.(updatedObject)
       notify.success(`物品 "${updatedObject.name}" 已更新`)
     } else {
       const newObject: ObjectCreateData = {
         name: objectName,
-        genMethod,
-        model: genMethod === "model" ? generationConfig.model : undefined,
-        prompt: genMethod === "model" ? generationConfig.prompt.trim() : undefined,
-        aspectRatio: genMethod === "model" ? generationConfig.aspectRatio : undefined,
-        quantity: genMethod === "model" ? generationConfig.quantity : undefined,
-        referenceImage: genMethod === "model" 
-          ? generationConfig.referenceImages[0] || undefined 
-          : uploadReferenceImages[0] || undefined,
-        referenceImages: genMethod === "model" 
-          ? generationConfig.referenceImages.length ? generationConfig.referenceImages : undefined 
-          : uploadReferenceImages.length ? uploadReferenceImages : undefined,
+        genMethod: "model",
+        model: generationConfig.model,
+        prompt: generationConfig.prompt.trim(),
+        aspectRatio: generationConfig.aspectRatio,
+        quantity: generationConfig.quantity,
+        referenceImage: generationConfig.referenceImages[0] || undefined,
+        referenceImages: generationConfig.referenceImages.length ? generationConfig.referenceImages : undefined,
       }
       onCreate?.(newObject)
       notify.success(`物品 "${newObject.name}" 创建成功`)
@@ -158,8 +114,6 @@ export default function ObjectCreator({
       quantity: 1,
       referenceImages: [],
     })
-    setUploadReferenceImages([])
-    setGenMethod("model")
     setTaskDrawerOpen(false)
   }
 
@@ -167,13 +121,11 @@ export default function ObjectCreator({
   useEffect(() => {
     if (isEditMode && initialData) {
       setObjectName(initialData.name)
-      setGenMethod(initialData.genMethod as "model" | "upload" || "model")
       setGenerationConfig(prev => ({
         ...prev,
         prompt: initialData.description || "",
         referenceImages: initialData.image ? [initialData.image] : [],
       }))
-      setUploadReferenceImages(initialData.image ? [initialData.image] : [])
     } else if (!open) {
       resetForm()
     }
@@ -293,104 +245,10 @@ export default function ObjectCreator({
             />
           </div>
 
-          {/* Generation Method */}
-          <div>
-            <label className="text-sm font-medium text-[hsl(var(--on-surface))] block mb-3">
-              <span className="text-red-500 mr-1">*</span>生成方式
-            </label>
-            <div className="inline-flex bg-[hsl(var(--surface-container-high))] rounded-full p-0.5">
-              <button
-                onClick={() => setGenMethod("model")}
-                className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all ${
-                  genMethod === "model"
-                    ? "signature-gradient text-white"
-                    : "text-[hsl(var(--on-surface))] hover:bg-[hsl(var(--surface-container-lowest))]"
-                }`}
-              >
-                通过模型生成物品
-              </button>
-              <button
-                onClick={() => setGenMethod("upload")}
-                className={`px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-all ${
-                  genMethod === "upload"
-                    ? "signature-gradient text-white"
-                    : "text-[hsl(var(--on-surface))] hover:bg-[hsl(var(--surface-container-lowest))]"
-                }`}
-              >
-                自己上传图片
-              </button>
-            </div>
-          </div>
-
-          {/* Upload Section - Only show when genMethod is "upload" */}
-          {genMethod === "upload" && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {/* Single Upload */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[hsl(var(--on-surface))]">
-                    上传已有物品图
-                  </label>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={(e) => handleFileUpload(e)}
-                    accept="image/jpeg,image/png,image/jpg"
-                    className="hidden"
-                  />
-                  <div 
-                    onClick={() => !uploading && fileInputRef.current?.click()}
-                    className={`aspect-[4/3] bg-[hsl(var(--surface-container-low))] rounded-xl border-2 border-dashed border-[hsl(var(--outline-variant))]/50 flex flex-col items-center justify-center gap-2 hover:border-[hsl(var(--primary))]/50 hover:bg-[hsl(var(--surface-container-high))] transition-all cursor-pointer group overflow-hidden ${uploading ? 'pointer-events-none' : ''}`}
-                  >
-                    {uploading ? (
-                      <>
-                        <Loader2 className="w-8 h-8 text-[hsl(var(--primary))] animate-spin" />
-                        <span className="text-sm text-[hsl(var(--on-surface))]">正在上传...</span>
-                      </>
-                    ) : uploadReferenceImages[0] ? (
-                      <img src={uploadReferenceImages[0]} alt="参考图" className="w-full h-full object-cover" />
-                    ) : (
-                      <>
-                        <ImagePlus className="w-8 h-8 text-[hsl(var(--secondary))] group-hover:text-[hsl(var(--primary))] transition-colors" />
-                        <span className="text-sm text-[hsl(var(--on-surface))]">上传已有物品图</span>
-                        <span className="text-xs text-[hsl(var(--secondary))]">支持JPG / JPEG / PNG格式</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Batch Upload */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[hsl(var(--on-surface))]">
-                    批量上传已有物品图
-                  </label>
-                  <input
-                    type="file"
-                    ref={batchFileInputRef}
-                    onChange={(e) => handleFileUpload(e, true)}
-                    accept=".zip"
-                    className="hidden"
-                  />
-                  <div 
-                    onClick={() => batchFileInputRef.current?.click()}
-                    className="aspect-[4/3] bg-[hsl(var(--surface-container-low))] rounded-xl border-2 border-dashed border-[hsl(var(--outline-variant))]/50 flex flex-col items-center justify-center gap-2 hover:border-[hsl(var(--primary))]/50 hover:bg-[hsl(var(--surface-container-high))] transition-all cursor-pointer group"
-                  >
-                    <Package className="w-8 h-8 text-[hsl(var(--secondary))] group-hover:text-[hsl(var(--primary))] transition-colors" />
-                    <span className="text-sm text-[hsl(var(--on-surface))]">批量上传已有物品图</span>
-                    <span className="text-xs text-[hsl(var(--secondary))]">支持上传zip格式的压缩包</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Model Generation - Using ImageGenerationForm component */}
-          {genMethod === "model" && (
-            <ImageGenerationForm
-              value={generationConfig}
-              onChange={setGenerationConfig}
-            />
-          )}
+          <ImageGenerationForm
+            value={generationConfig}
+            onChange={setGenerationConfig}
+          />
         </div>
 
         {/* Footer */}

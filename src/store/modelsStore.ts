@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type { ModelDTO, ModelModality } from '@/api/types'
 import { modelsApi } from '@/features/infinite-canvas/api/models'
 
@@ -51,7 +50,6 @@ const createInitialState = (): Omit<ModelsState, 'fetchModelsByModality' | 'getM
 })
 
 export const useModelsStore = create<ModelsState>()(
-  persist(
     (set, get) => ({
       ...createInitialState(),
 
@@ -147,39 +145,9 @@ export const useModelsStore = create<ModelsState>()(
         return allModels.find(m => m.id === id)
       },
       
-      // 清除缓存
       clearCache: () => {
         set(createInitialState())
       },
     }),
-    {
-      name: 'models-storage-v2', // 更改存储 key，避免读取旧结构
-      partialize: (state) => ({
-        image: state.image,
-        video: state.video,
-        text: state.text,
-        audio: state.audio,
-        embedding: state.embedding,
-        rerank: state.rerank,
-        multimodal: state.multimodal,
-      }),
-    }
-  )
 )
 
-// 按类型初始化
-export function initImageModels() {
-  const store = useModelsStore.getState()
-  store.fetchModelsByModality('image')
-}
-
-export function initVideoModels() {
-  const store = useModelsStore.getState()
-  store.fetchModelsByModality('video')
-}
-
-// 强制刷新
-export function refreshModelsByModality(modality: ModelModality) {
-  const store = useModelsStore.getState()
-  return store.fetchModelsByModality(modality, true)
-}

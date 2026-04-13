@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, Suspense, lazy } from "react"
-import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from "react-router-dom"
+import { HashRouter, Routes, Route, Link, useLocation, useNavigate, Navigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -35,8 +35,18 @@ import {
   IDENTITY_CHANGE_EVENT,
   canAccessProjectRoutes,
   getStoredIdentity,
+  getAuthToken,
   type IdentityOption,
-} from "@/lib/mock-identities"
+} from "@/lib/session"
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const location = useLocation()
+  const token = getAuthToken()
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+  return <>{children}</>
+}
 
 function IdentityRouteGuard() {
   const location = useLocation()
@@ -387,23 +397,23 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/pricing" element={<Pricing />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/project/:id/dashboard" element={<Dashboard />} />
-          <Route path="/projects" element={<ProjectsList />} />
           <Route path="/gallery" element={<Gallery />} />
-          <Route path="/project/:id" element={<ProjectDetail />} />
-          <Route path="/project/:id/:tab" element={<ProjectDetail />} />
-
-          <Route path="/project/:projectId/workflows/:workflowId" element={<WorkflowCanvas />} />
-          <Route path="/project/:projectId/episode/:episodeId" element={<EpisodeDetail />} />
-          <Route path="/project/:projectId/episode/:episodeId/canvas" element={<WorkflowCanvas />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/workflow" element={<Workflow />} />
-          <Route path="/project/:projectId/permissions" element={<ProjectPermissions />} />
-          <Route path="/members" element={<Members />} />
-          <Route path="/assets" element={<Assets />} />
+
+          <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="/project/:id/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="/projects" element={<RequireAuth><ProjectsList /></RequireAuth>} />
+          <Route path="/project/:id" element={<RequireAuth><ProjectDetail /></RequireAuth>} />
+          <Route path="/project/:id/:tab" element={<RequireAuth><ProjectDetail /></RequireAuth>} />
+          <Route path="/project/:projectId/workflows/:workflowId" element={<RequireAuth><WorkflowCanvas /></RequireAuth>} />
+          <Route path="/project/:projectId/episode/:episodeId" element={<RequireAuth><EpisodeDetail /></RequireAuth>} />
+          <Route path="/project/:projectId/episode/:episodeId/canvas" element={<RequireAuth><WorkflowCanvas /></RequireAuth>} />
+          <Route path="/project/:projectId/permissions" element={<RequireAuth><ProjectPermissions /></RequireAuth>} />
+          <Route path="/members" element={<RequireAuth><Members /></RequireAuth>} />
+          <Route path="/assets" element={<RequireAuth><Assets /></RequireAuth>} />
         </Routes>
       </Suspense>
     </HashRouter>

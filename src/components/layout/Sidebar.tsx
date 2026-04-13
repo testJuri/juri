@@ -18,16 +18,18 @@ import {
 } from "lucide-react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useEffect, useState } from "react"
-import ApiKeySettings from "./ApiKeySettings"
+import ApiSettings from "@/features/infinite-canvas/components/ApiSettings"
 import ProjectCreator from "@/pages/ProjectCreator"
-import { getActiveProjectId, setActiveProjectId, getCurrentUser } from "@/lib/session"
-import { useProjectsStore, refreshProjects } from "@/store/projectsStore"
-import { projectsApi } from "@/api"
 import {
+  getActiveProjectId,
+  setActiveProjectId,
+  getCurrentUser,
   IDENTITY_CHANGE_EVENT,
   getStoredIdentity,
   type IdentityOption,
-} from "@/lib/mock-identities"
+} from "@/lib/session"
+import { useProjectsStore, refreshProjects } from "@/store/projectsStore"
+import { projectsApi } from "@/api"
 
 // 根据身份返回导航项：员工只有基础权限，管理员和超级管理员有完整权限
 const getNavItems = (identity: IdentityOption, projectId?: number) => {
@@ -223,8 +225,8 @@ export default function Sidebar() {
       </div>
     </aside>
 
-    {/* API Key Settings Dialog */}
-    <ApiKeySettings open={isSettingsOpen} onOpenChange={setIsSettingsOpen} />
+    {/* API Settings Dialog */}
+    <ApiSettings visible={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     
     {/* Project Creator Dialog */}
     <ProjectCreator

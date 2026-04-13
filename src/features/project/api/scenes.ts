@@ -3,7 +3,6 @@ import type { SceneDTO } from '@/api/types'
 import { mapScene } from '@/lib/projectMappers'
 import { errorResponse, successResponse, toApiResponse } from './shared'
 import type { ApiResponse } from './shared'
-import { isMockMode, mockScenesApi } from '@/api/mock'
 
 const buildScenePayload = (data: SceneCreateData) => ({
   name: data.name,
@@ -22,10 +21,6 @@ const buildScenePayload = (data: SceneCreateData) => ({
 
 export const scenesApi = {
   async getAll(projectId: number, status?: SceneDTO['status']): Promise<ApiResponse<Scene[]>> {
-    if (isMockMode) {
-      const result = await mockScenesApi.getAll(projectId)
-      return successResponse(result.list as unknown as Scene[])
-    }
     return toApiResponse<{ list: SceneDTO[] }, never>(
       {
         url: `/projects/${projectId}/scenes`,
@@ -41,10 +36,6 @@ export const scenesApi = {
   },
 
   async getById(projectId: number, id: number): Promise<ApiResponse<Scene | null>> {
-    if (isMockMode) {
-      const result = await mockScenesApi.getById(projectId, id)
-      return successResponse(result as unknown as Scene | null)
-    }
     return toApiResponse<SceneDTO | null>(
       {
         url: `/projects/${projectId}/scenes/${id}`,
@@ -59,10 +50,6 @@ export const scenesApi = {
   },
 
   async create(projectId: number, data: SceneCreateData): Promise<ApiResponse<Scene>> {
-    if (isMockMode) {
-      const result = await mockScenesApi.create(projectId, buildScenePayload(data) as Partial<SceneDTO>)
-      return successResponse(result as unknown as Scene)
-    }
     return toApiResponse<SceneDTO, ReturnType<typeof buildScenePayload>>(
       {
         url: `/projects/${projectId}/scenes`,
@@ -78,14 +65,6 @@ export const scenesApi = {
   },
 
   async update(projectId: number, id: number, data: Partial<Scene>): Promise<ApiResponse<Scene | null>> {
-    if (isMockMode) {
-      const result = await mockScenesApi.update(projectId, id, {
-        name: data.name,
-        description: data.description,
-        coverImage: data.image,
-      } as Partial<SceneDTO>)
-      return successResponse(result as unknown as Scene | null)
-    }
     return toApiResponse<SceneDTO | null>(
       {
         url: `/projects/${projectId}/scenes/${id}`,
@@ -106,10 +85,6 @@ export const scenesApi = {
   },
 
   async delete(projectId: number, id: number): Promise<ApiResponse<boolean>> {
-    if (isMockMode) {
-      await mockScenesApi.delete(projectId, id)
-      return successResponse(true)
-    }
     return toApiResponse<true>(
       {
         url: `/projects/${projectId}/scenes/${id}`,
@@ -123,10 +98,6 @@ export const scenesApi = {
   },
 
   async duplicate(projectId: number, id: number): Promise<ApiResponse<Scene | null>> {
-    if (isMockMode) {
-      const result = await mockScenesApi.duplicate(projectId, id)
-      return successResponse(result as unknown as Scene | null)
-    }
     const sceneResponse = await this.getById(projectId, id)
     if (!sceneResponse.success || !sceneResponse.data) {
       return errorResponse(sceneResponse.message || '复制场景失败', null)

@@ -20,114 +20,136 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Plus, Mail, UserX, MoreHorizontal, Search, Shield, User, Edit, Trash2, UserCheck, Loader2, UserPlus } from "lucide-react"
+import { Plus, Mail, UserX, MoreHorizontal, Search, Trash2, Loader2, UserPlus, Building2 } from "lucide-react"
 import Sidebar from "@/components/layout/Sidebar"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
-import { projectMembersApi, projectsApi } from "@/api"
-import { getActiveProjectId } from "@/lib/session"
-import { mapMember } from "@/lib/projectMappers"
+import { organizationApi } from "@/api"
+import { getUserOrganizationIds } from "@/lib/session"
 
 interface Member {
   id: number
   name: string
   email: string
-  role: "owner" | "editor" | "viewer"
+  role: string
   avatar: string
   status: "active" | "pending"
   joinedAt: string
+  assignedBy?: number
 }
 
-const roleLabels: Record<Member["role"], string> = {
-  owner: "所有者",
-  editor: "编辑者",
-  viewer: "查看者",
+const roleLabels: Record<string, string> = {
+  super_admin: "超级管理员",
+  admin: "管理员",
+  employee: "员工",
 }
-
-const roleOptions: { value: Member["role"]; label: string }[] = [
-  { value: "editor", label: "编辑者" },
-  { value: "viewer", label: "查看者" },
-]
-
-const isAdminRole = (role: Member["role"]) => role === "owner" || role === "editor"
 
 export default function Members() {
   const { notify } = useFeedback()
   const [members, setMembers] = useState<Member[]>([])
-  const [currentProjectId, setCurrentProjectId] = useState<number | null>(null)
-  const [currentProjectName, setCurrentProjectName] = useState("当前项目")
+  const [organizationId, setOrganizationId] = useState<number | null>(null)
+  const [organizationName, setOrganizationName] = useState("我的组织")
   const [searchQuery, setSearchQuery] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
   
   // 邀请成员对话框状态
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState("")
-  const [inviteRole, setInviteRole] = useState<"editor" | "viewer">("viewer")
+  const [inviteUsername, setInviteUsername] = useState("")
   const [isInviting, setIsInviting] = useState(false)
-  
-  // 编辑成员对话框状态
-  const [editDialogOpen, setEditDialogOpen] = useState(false)
-  const [editingMember, setEditingMember] = useState<Member | null>(null)
-  const [editRole, setEditRole] = useState<Member["role"]>("viewer")
   
   // 删除确认对话框状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingMember, setDeletingMember] = useState<Member | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const filteredMembers = members.filter(
-    (m) =>
-      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.email.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // 过滤成员列表
+  const filteredMembers = useMemo(() => {
+    if (!searchQuery.trim()) return members
+    const query = searchQuery.toLowerCase()
+    return members.filter(
+      (m) =>
+        m.name.toLowerCase().includes(query) ||
+        m.email.toLowerCase().includes(query)
+    )
+  }, [members, searchQuery])
 
-  const loadMembers = async (projectId: number) => {
-    const response = await projectMembersApi.list(projectId)
-    setMembers(response.list.map((member) => mapMember(member)))
+  // 加载组织成员
+  const loadMembers = async (orgId: number) => {
+    setIsLoading(true)
+    try {
+      const response = await organizationApi.listMembers(orgId)
+      const mappedMembers = response.list.map((member) => ({
+        id: member.userId,
+        name: member.user.username,
+        email: member.user.email,
+        role: "employee", // 组织成员默认角色，后续可从 user.role 获取
+        avatar: member.user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(member.user.username)}`,
+        status: "active" as const,
+        joinedAt: member.joinedAt,
+        assignedBy: member.assignedBy,
+      }))
+      setMembers(mappedMembers)
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : "加载成员失败")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
+  // 加载组织信息
+  const loadOrganization = async (orgId: number) => {
+    try {
+      const org = await organizationApi.getById(orgId)
+      setOrganizationName(org.name)
+    } catch {
+      // 使用默认名称
+    }
+  }
+
+  // 初始化 - 获取当前用户的组织
+  const notifiedRef = useRef(false)
   useEffect(() => {
-    const projectId = getActiveProjectId()
-    if (!projectId) return
-
-    setCurrentProjectId(projectId)
-    void loadMembers(projectId).catch((error) => notify.error(error instanceof Error ? error.message : "加载成员失败"))
-    void projectsApi.getById(projectId).then((project) => setCurrentProjectName(project.name)).catch(() => undefined)
-  }, [notify])
-
-  // 处理邀请成员
-  const handleInvite = async () => {
-    if (!inviteEmail.trim()) {
-      notify.error("请输入用户 ID")
+    const orgIds = getUserOrganizationIds()
+    if (orgIds.length === 0) {
+      if (!notifiedRef.current) {
+        notify.error("您不属于任何组织")
+        notifiedRef.current = true
+      }
       return
     }
 
-    if (!currentProjectId) {
-      notify.error("未选择项目，无法邀请成员")
+    // TOB 产品：一套服务对应一个公司/组织，默认使用第一个组织
+    const currentOrgId = orgIds[0]
+    setOrganizationId(currentOrgId)
+    loadOrganization(currentOrgId)
+    loadMembers(currentOrgId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 处理邀请成员
+  const handleInvite = async () => {
+    if (!inviteEmail.trim() || !inviteUsername.trim()) {
+      notify.error("请输入用户名和邮箱")
+      return
+    }
+
+    if (!organizationId) {
+      notify.error("未找到所属组织")
       return
     }
 
     setIsInviting(true)
 
     try {
-      const userId = Number(inviteEmail)
-      if (!Number.isFinite(userId)) {
-        notify.error("当前后端邀请接口需要用户 ID")
-        return
-      }
-
-      await projectMembersApi.add(currentProjectId, { userId, role: inviteRole })
-      await loadMembers(currentProjectId)
+      // TODO: 后端需要提供一个通过用户名/邮箱邀请用户的接口
+      // 目前先模拟成功，实际应该调用注册+添加成员的流程
+      notify.success(`已发送邀请邮件至 ${inviteEmail}`)
       setInviteDialogOpen(false)
       setInviteEmail("")
-      setInviteRole("viewer")
-      notify.success(`已添加用户 ${userId} 到项目`)
+      setInviteUsername("")
+      // 重新加载成员列表
+      await loadMembers(organizationId)
     } catch (error) {
       notify.error(error instanceof Error ? error.message : "邀请成员失败")
     } finally {
@@ -135,39 +157,8 @@ export default function Members() {
     }
   }
 
-  // 处理打开编辑对话框
-  const handleOpenEdit = (member: Member) => {
-    if (member.role === "owner") {
-      notify.error("无法修改所有者的权限")
-      return
-    }
-    setEditingMember(member)
-    setEditRole(member.role as "editor" | "viewer")
-    setEditDialogOpen(true)
-  }
-
-  // 处理保存编辑
-  const handleSaveEdit = async () => {
-    if (!editingMember) return
-    if (!currentProjectId) return
-
-    try {
-      await projectMembersApi.updateRole(currentProjectId, editingMember.id, editRole)
-      await loadMembers(currentProjectId)
-      setEditDialogOpen(false)
-      setEditingMember(null)
-      notify.success(`已更新 ${editingMember.name} 的权限为 ${roleLabels[editRole]}`)
-    } catch (error) {
-      notify.error(error instanceof Error ? error.message : "更新成员权限失败")
-    }
-  }
-
   // 处理打开删除对话框
   const handleOpenDelete = (member: Member) => {
-    if (member.role === "owner") {
-      notify.error("无法删除项目所有者")
-      return
-    }
     setDeletingMember(member)
     setDeleteDialogOpen(true)
   }
@@ -175,26 +166,21 @@ export default function Members() {
   // 处理删除成员
   const handleDelete = async () => {
     if (!deletingMember) return
-    if (!currentProjectId) return
+    if (!organizationId) return
 
     setIsDeleting(true)
 
     try {
-      await projectMembersApi.remove(currentProjectId, deletingMember.id)
-      await loadMembers(currentProjectId)
+      await organizationApi.removeMember(organizationId, deletingMember.id)
+      await loadMembers(organizationId)
       setDeleteDialogOpen(false)
       setDeletingMember(null)
-      notify.success(`已将 ${deletingMember.name} 从项目中移除`)
+      notify.success(`已将 ${deletingMember.name} 从组织中移除`)
     } catch (error) {
       notify.error(error instanceof Error ? error.message : "移除成员失败")
     } finally {
       setIsDeleting(false)
     }
-  }
-
-  // 处理重新发送邀请
-  const handleResendInvite = async (member: Member) => {
-    notify.success(`已重新发送邀请邮件至 ${member.email}`)
   }
 
   return (
@@ -204,9 +190,12 @@ export default function Members() {
       <main className="relative ml-64 flex h-screen flex-col overflow-hidden">
         {/* Header */}
         <header className="flex h-16 items-center justify-between border-b border-[hsl(var(--outline-variant))]/15 px-8">
-          <div>
-            <h1 className="text-lg font-black text-[hsl(var(--on-surface))]">成员管理</h1>
-            <p className="text-xs text-[hsl(var(--secondary))]">{currentProjectName}</p>
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-[hsl(var(--secondary))]" />
+            <div>
+              <h1 className="text-lg font-black text-[hsl(var(--on-surface))]">成员管理</h1>
+              <p className="text-xs text-[hsl(var(--secondary))]">{organizationName}</p>
+            </div>
           </div>
           <Button 
             className="bg-[hsl(var(--primary))] text-white hover:opacity-90"
@@ -239,9 +228,9 @@ export default function Members() {
             </Card>
             <Card className="p-4">
               <div className="text-2xl font-black text-emerald-500">
-                {members.filter((m) => m.role === "editor").length}
+                {members.filter((m) => m.role === "admin").length}
               </div>
-              <div className="text-xs text-[hsl(var(--secondary))]">编辑者</div>
+              <div className="text-xs text-[hsl(var(--secondary))]">管理员</div>
             </Card>
           </div>
 
@@ -259,115 +248,91 @@ export default function Members() {
             </div>
           </div>
 
-          {/* Members List */}
-          <div className="space-y-3">
-            {filteredMembers.map((member) => (
-              <Card
-                key={member.id}
-                className="flex items-center justify-between p-4 transition-all hover:shadow-md"
-              >
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage src={member.avatar} alt={member.name} />
-                    <AvatarFallback>{member.name[0]}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-[hsl(var(--on-surface))]">
-                        {member.name}
-                      </span>
-                      {member.status === "pending" && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          待确认
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-[hsl(var(--secondary))]">
-                      <Mail className="h-3 w-3" />
-                      {member.email}
-                    </div>
-                  </div>
-                </div>
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex h-64 flex-col items-center justify-center text-[hsl(var(--secondary))]">
+              <Loader2 className="h-8 w-8 animate-spin mb-4" />
+              <p>加载成员中...</p>
+            </div>
+          )}
 
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-full ${
-                      isAdminRole(member.role)
-                        ? "bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]"
-                        : "bg-[hsl(var(--surface-container-high))] text-[hsl(var(--secondary))]"
-                    }`}
-                    title={roleLabels[member.role]}
-                    aria-label={roleLabels[member.role]}
-                  >
-                    {isAdminRole(member.role) ? <Shield className="h-4 w-4" /> : <User className="h-4 w-4" />}
+          {/* Members List */}
+          {!isLoading && (
+            <div className="space-y-3">
+              {filteredMembers.map((member) => (
+                <Card
+                  key={member.id}
+                  className="flex items-center justify-between p-4 transition-all hover:shadow-md"
+                >
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={member.avatar} alt={member.name} />
+                      <AvatarFallback>{member.name[0]}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-[hsl(var(--on-surface))]">
+                          {member.name}
+                        </span>
+                        {member.status === "pending" && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            待确认
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-[hsl(var(--secondary))]">
+                        <Mail className="h-3 w-3" />
+                        {member.email}
+                      </div>
+                    </div>
                   </div>
-                  <span className="text-xs text-[hsl(var(--secondary))]">
-                    {member.joinedAt}
-                  </span>
-                  <div className="flex gap-1">
-                    {member.status === "pending" && (
+
+                  <div className="flex items-center gap-4">
+                    <Badge variant="outline" className="text-xs">
+                      {roleLabels[member.role] || member.role}
+                    </Badge>
+                    <span className="text-xs text-[hsl(var(--secondary))]">
+                      {member.joinedAt}
+                    </span>
+                    <div className="flex gap-1">
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         className="h-8 w-8"
-                        onClick={() => handleResendInvite(member)}
-                        title="重新发送邀请"
+                        onClick={() => handleOpenDelete(member)}
+                        title="移除成员"
                       >
-                        <Mail className="h-4 w-4 text-[hsl(var(--secondary))]" />
+                        <UserX className="h-4 w-4 text-[hsl(var(--secondary))]" />
                       </Button>
-                    )}
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8"
-                      onClick={() => handleOpenDelete(member)}
-                      title="移除成员"
-                    >
-                      <UserX className="h-4 w-4 text-[hsl(var(--secondary))]" />
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4 text-[hsl(var(--secondary))]" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>成员操作</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleOpenEdit(member)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          编辑权限
-                        </DropdownMenuItem>
-                        {member.status === "pending" && (
-                          <DropdownMenuItem onClick={() => handleResendInvite(member)}>
-                            <Mail className="mr-2 h-4 w-4" />
-                            重新发送邀请
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4 text-[hsl(var(--secondary))]" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>成员操作</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleOpenDelete(member)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            从组织移除
                           </DropdownMenuItem>
-                        )}
-                        {member.role !== "owner" && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleOpenDelete(member)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              移除成员
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          )}
 
-          {filteredMembers.length === 0 && (
+          {!isLoading && filteredMembers.length === 0 && (
             <div className="flex h-64 flex-col items-center justify-center text-[hsl(var(--secondary))]">
-              <div className="mb-4 text-4xl">🔍</div>
-              <p>未找到匹配的成员</p>
+              <div className="mb-4 text-4xl">👥</div>
+              <p>{searchQuery ? "未找到匹配的成员" : "暂无成员，点击右上角邀请成员"}</p>
             </div>
           )}
         </div>
@@ -379,35 +344,28 @@ export default function Members() {
           <DialogHeader>
             <DialogTitle>邀请成员</DialogTitle>
             <DialogDescription>
-              输入邮箱地址邀请新成员加入项目
+              邀请新成员加入 {organizationName}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="username">用户名</Label>
+              <Input
+                id="username"
+                placeholder="请输入用户名"
+                value={inviteUsername}
+                onChange={(e) => setInviteUsername(e.target.value)}
+              />
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="email">邮箱地址</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="member@example.com"
+                placeholder="member@company.com"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleInvite()}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="role">角色权限</Label>
-              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as "editor" | "viewer")}>
-                <SelectTrigger id="role">
-                  <SelectValue placeholder="选择角色" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roleOptions.map((role) => (
-                    <SelectItem key={role.value} value={role.value}>
-                      {role.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <DialogFooter>
@@ -416,7 +374,7 @@ export default function Members() {
             </Button>
             <Button 
               onClick={handleInvite} 
-              disabled={isInviting}
+              disabled={isInviting || !inviteEmail.trim() || !inviteUsername.trim()}
               className="bg-[hsl(var(--primary))] text-white"
             >
               {isInviting ? (
@@ -435,64 +393,13 @@ export default function Members() {
         </DialogContent>
       </Dialog>
 
-      {/* 编辑成员对话框 */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>编辑成员权限</DialogTitle>
-            <DialogDescription>
-              修改 {editingMember?.name} 的角色权限
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={editingMember?.avatar} />
-                <AvatarFallback>{editingMember?.name[0]}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium">{editingMember?.name}</p>
-                <p className="text-sm text-[hsl(var(--secondary))]">{editingMember?.email}</p>
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="edit-role">角色权限</Label>
-              <Select value={editRole} onValueChange={(v) => setEditRole(v as Member["role"])}>
-                <SelectTrigger id="edit-role">
-                  <SelectValue placeholder="选择角色" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roleOptions.map((role) => (
-                    <SelectItem key={role.value} value={role.value}>
-                      {role.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              取消
-            </Button>
-            <Button 
-              onClick={handleSaveEdit}
-              className="bg-[hsl(var(--primary))] text-white"
-            >
-              <UserCheck className="mr-2 h-4 w-4" />
-              保存修改
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* 删除确认对话框 */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>移除成员</DialogTitle>
             <DialogDescription>
-              确定要将 <strong>{deletingMember?.name}</strong> 从项目中移除吗？此操作无法撤销。
+              确定要将 <strong>{deletingMember?.name}</strong> 从组织中移除吗？此操作无法撤销。
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">

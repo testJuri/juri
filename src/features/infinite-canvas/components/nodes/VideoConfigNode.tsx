@@ -5,7 +5,7 @@ import { PlayCircleOutlined, CopyOutlined, DeleteOutlined } from '@ant-design/ic
 import { useCanvasStore } from '../../stores/canvasStore';
 import { useVideoGeneration } from '../../hooks';
 import { VIDEO_MODELS } from '../../config/models';
-import { isDashScopeT2VModel, isDashScopeKF2VModel } from '../../api/video';
+import { isT2VModel, isKF2VModel } from '@/api/aigc';
 import type { CustomNode } from '../../types';
 
 // 尺寸映射表
@@ -101,8 +101,8 @@ const VideoConfigNode: React.FC<NodeProps<CustomNode['data']>> = ({ id, data, se
   }, []);
 
   const currentModel = useMemo(() => VIDEO_MODELS.find((m) => m.key === localModel), [localModel]);
-  const isT2VModel = useMemo(() => isDashScopeT2VModel(localModel), [localModel]);
-  const isKF2VModel = useMemo(() => isDashScopeKF2VModel(localModel), [localModel]);
+  const isT2V = useMemo(() => isT2VModel(localModel), [localModel]);
+  const isKF2V = useMemo(() => isKF2VModel(localModel), [localModel]);
 
   // Handle model change
   const handleModelChange = (value: string) => {
@@ -212,7 +212,7 @@ const VideoConfigNode: React.FC<NodeProps<CustomNode['data']>> = ({ id, data, se
     const { prompt, firstFrameImage, lastFrameImage } = getConnectedInputs();
 
     // 关键帧生视频需要首帧和尾帧
-    if (isKF2VModel) {
+    if (isKF2V) {
       if (!firstFrameImage) {
         message.warning('请连接首帧图片节点');
         return;
@@ -223,13 +223,13 @@ const VideoConfigNode: React.FC<NodeProps<CustomNode['data']>> = ({ id, data, se
       }
     }
     // 图生视频需要图片输入
-    else if (!isT2VModel && !firstFrameImage) {
+    else if (!isT2V && !firstFrameImage) {
       message.warning('请连接图片节点（首帧图片）');
       return;
     }
 
     // 文生视频需要文本输入
-    if (isT2VModel && !prompt) {
+    if (isT2V && !prompt) {
       message.warning('请连接文本节点（描述文案）');
       return;
     }
@@ -313,7 +313,7 @@ const VideoConfigNode: React.FC<NodeProps<CustomNode['data']>> = ({ id, data, se
         }}
       >
         {/* Handles */}
-        {isKF2VModel ? (
+        {isKF2V ? (
           <>
             <Handle 
               type="target" 
@@ -409,7 +409,7 @@ const VideoConfigNode: React.FC<NodeProps<CustomNode['data']>> = ({ id, data, se
           </div>
 
           {/* 关键帧模式标签 */}
-          {isKF2VModel && (
+          {isKF2V && (
             <div className="space-y-1">
               <div className="h-6 flex items-center">
                 <span className="text-xs" style={{ color: 'var(--text-secondary, var(--ic-on-surface-variant, #6b6b6b))' }}>首帧</span>
@@ -421,7 +421,7 @@ const VideoConfigNode: React.FC<NodeProps<CustomNode['data']>> = ({ id, data, se
           )}
 
           {/* Size Selection (T2V) or Resolution Selection (I2V) */}
-          {isT2VModel ? (
+          {isT2V ? (
             <>
               {/* 分辨率选择 */}
               <div>

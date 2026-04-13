@@ -3,7 +3,6 @@ import type { CharacterDTO } from '@/api/types'
 import { mapCharacter } from '@/lib/projectMappers'
 import { errorResponse, successResponse, toApiResponse } from './shared'
 import type { ApiResponse } from './shared'
-import { isMockMode, mockCharactersApi } from '@/api/mock'
 
 const buildCharacterPayload = (data: CharacterCreateData) => ({
   name: data.name,
@@ -21,10 +20,6 @@ const buildCharacterPayload = (data: CharacterCreateData) => ({
 
 export const charactersApi = {
   async getAll(projectId: number, role?: 'main' | 'support'): Promise<ApiResponse<Character[]>> {
-    if (isMockMode) {
-      const result = await mockCharactersApi.getAll(projectId)
-      return successResponse(result.list as unknown as Character[])
-    }
     return toApiResponse<{ list: CharacterDTO[] }, never>(
       {
         url: `/projects/${projectId}/characters`,
@@ -40,10 +35,6 @@ export const charactersApi = {
   },
 
   async getById(projectId: number, id: number): Promise<ApiResponse<Character | null>> {
-    if (isMockMode) {
-      const result = await mockCharactersApi.getById(projectId, id)
-      return successResponse(result as unknown as Character | null)
-    }
     return toApiResponse<CharacterDTO | null>(
       {
         url: `/projects/${projectId}/characters/${id}`,
@@ -58,10 +49,6 @@ export const charactersApi = {
   },
 
   async create(projectId: number, data: CharacterCreateData): Promise<ApiResponse<Character>> {
-    if (isMockMode) {
-      const result = await mockCharactersApi.create(projectId, buildCharacterPayload(data) as Partial<CharacterDTO>)
-      return successResponse(result as unknown as Character)
-    }
     return toApiResponse<CharacterDTO, ReturnType<typeof buildCharacterPayload>>(
       {
         url: `/projects/${projectId}/characters`,
@@ -77,15 +64,6 @@ export const charactersApi = {
   },
 
   async update(projectId: number, id: number, data: Partial<Character>): Promise<ApiResponse<Character | null>> {
-    if (isMockMode) {
-      const result = await mockCharactersApi.update(projectId, id, {
-        name: data.name,
-        style: data.style,
-        description: data.description,
-        avatar: data.image,
-      } as Partial<CharacterDTO>)
-      return successResponse(result as unknown as Character | null)
-    }
     return toApiResponse<CharacterDTO | null>(
       {
         url: `/projects/${projectId}/characters/${id}`,
@@ -106,10 +84,6 @@ export const charactersApi = {
   },
 
   async delete(projectId: number, id: number): Promise<ApiResponse<boolean>> {
-    if (isMockMode) {
-      await mockCharactersApi.delete(projectId, id)
-      return successResponse(true)
-    }
     return toApiResponse<true>(
       {
         url: `/projects/${projectId}/characters/${id}`,
@@ -123,10 +97,6 @@ export const charactersApi = {
   },
 
   async duplicate(projectId: number, id: number): Promise<ApiResponse<Character | null>> {
-    if (isMockMode) {
-      const result = await mockCharactersApi.duplicate(projectId, id)
-      return successResponse(result as unknown as Character | null)
-    }
     const characterResponse = await this.getById(projectId, id)
     if (!characterResponse.success || !characterResponse.data) {
       return errorResponse(characterResponse.message || '复制角色失败', null)

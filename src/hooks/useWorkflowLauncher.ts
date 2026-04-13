@@ -1,7 +1,7 @@
 import { useCallback } from "react"
 
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
-import { useProjectsStore } from "@/features/infinite-canvas/stores/projectsStore"
+import { useCanvasDocumentsStore } from "@/features/infinite-canvas/stores/projectsStore"
 import { createWorkflowId, createWorkflowName, createWorkflowPath } from "@/lib/workflows"
 import type { WorkflowSourceType } from "@/types"
 import { useNavigate } from "react-router-dom"
@@ -17,7 +17,7 @@ interface LaunchWorkflowOptions {
 export const useWorkflowLauncher = () => {
   const navigate = useNavigate()
   const { notify } = useFeedback()
-  const { createWorkflowDocument } = useProjectsStore()
+  const { createWorkflowDocument } = useCanvasDocumentsStore()
 
   return useCallback(
     ({

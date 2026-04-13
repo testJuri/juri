@@ -1,7 +1,6 @@
 import { appClient } from './clients/appClient'
 import { requestData } from './core/response'
 import type { ListData, ProjectDTO, ProjectDetailDTO } from './types'
-import { isMockMode, mockProjectsApi } from './mock'
 
 export interface CreateProjectInput {
   organizationId: number
@@ -21,9 +20,6 @@ export interface UpdateProjectInput {
 
 export const projectsApi = {
   list(params?: { page?: number; size?: number; status?: ProjectDTO['status']; organizationId?: number }) {
-    if (isMockMode) {
-      return mockProjectsApi.list(params)
-    }
     return requestData<ListData<ProjectDTO>>(appClient, {
       url: '/projects',
       method: 'GET',
@@ -32,9 +28,6 @@ export const projectsApi = {
   },
 
   getById(projectId: number) {
-    if (isMockMode) {
-      return mockProjectsApi.getById(projectId)
-    }
     return requestData<ProjectDetailDTO>(appClient, {
       url: `/projects/${projectId}`,
       method: 'GET',
@@ -42,9 +35,6 @@ export const projectsApi = {
   },
 
   create(payload: CreateProjectInput) {
-    if (isMockMode) {
-      return mockProjectsApi.create(payload)
-    }
     return requestData<ProjectDTO>(appClient, {
       url: '/projects',
       method: 'POST',
@@ -53,9 +43,6 @@ export const projectsApi = {
   },
 
   update(projectId: number, payload: UpdateProjectInput) {
-    if (isMockMode) {
-      return mockProjectsApi.update(projectId, payload)
-    }
     return requestData<ProjectDTO>(appClient, {
       url: `/projects/${projectId}`,
       method: 'PUT',
@@ -64,9 +51,6 @@ export const projectsApi = {
   },
 
   remove(projectId: number) {
-    if (isMockMode) {
-      return mockProjectsApi.remove(projectId)
-    }
     return requestData<true>(appClient, {
       url: `/projects/${projectId}`,
       method: 'DELETE',

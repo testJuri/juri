@@ -3,7 +3,6 @@ import type { EpisodeDTO } from '@/api/types'
 import { mapEpisode } from '@/lib/projectMappers'
 import { errorResponse, successResponse, toApiResponse } from './shared'
 import type { ApiResponse } from './shared'
-import { isMockMode, mockEpisodesApi } from '@/api/mock'
 
 const buildEpisodeCreatePayload = (data: EpisodeCreateData, code?: string) => ({
   name: data.folderName,
@@ -20,10 +19,6 @@ const buildEpisodeCreatePayload = (data: EpisodeCreateData, code?: string) => ({
 
 export const episodesApi = {
   async getAll(projectId: number, status?: EpisodeDTO['status']): Promise<ApiResponse<Episode[]>> {
-    if (isMockMode) {
-      const result = await mockEpisodesApi.getAll(projectId)
-      return successResponse(result.list as unknown as Episode[])
-    }
     return toApiResponse<{ list: EpisodeDTO[] }, never>(
       {
         url: `/projects/${projectId}/episodes`,
@@ -41,10 +36,6 @@ export const episodesApi = {
   },
 
   async getById(projectId: number, id: number): Promise<ApiResponse<Episode | null>> {
-    if (isMockMode) {
-      const result = await mockEpisodesApi.getById(projectId, id)
-      return successResponse(result as unknown as Episode | null)
-    }
     return toApiResponse<EpisodeDTO | null>(
       {
         url: `/projects/${projectId}/episodes/${id}`,
@@ -61,14 +52,6 @@ export const episodesApi = {
   },
 
   async create(projectId: number, data: EpisodeCreateData): Promise<ApiResponse<Episode>> {
-    if (isMockMode) {
-      const result = await mockEpisodesApi.create(projectId, {
-        name: data.folderName,
-        description: data.description,
-        order: Number(data.episodeCount) || 1,
-      } as Partial<EpisodeDTO>)
-      return successResponse(result as unknown as Episode)
-    }
     return toApiResponse<EpisodeDTO, ReturnType<typeof buildEpisodeCreatePayload>>(
       {
         url: `/projects/${projectId}/episodes`,
@@ -86,14 +69,6 @@ export const episodesApi = {
   },
 
   async update(projectId: number, id: number, data: Partial<Episode>): Promise<ApiResponse<Episode | null>> {
-    if (isMockMode) {
-      const result = await mockEpisodesApi.update(projectId, id, {
-        name: data.name,
-        description: data.description,
-        status: data.status,
-      } as Partial<EpisodeDTO>)
-      return successResponse(result as unknown as Episode | null)
-    }
     return toApiResponse<EpisodeDTO | null>(
       {
         url: `/projects/${projectId}/episodes/${id}`,
@@ -116,10 +91,6 @@ export const episodesApi = {
   },
 
   async delete(projectId: number, id: number): Promise<ApiResponse<boolean>> {
-    if (isMockMode) {
-      await mockEpisodesApi.delete(projectId, id)
-      return successResponse(true)
-    }
     return toApiResponse<true>(
       {
         url: `/projects/${projectId}/episodes/${id}`,
@@ -133,10 +104,6 @@ export const episodesApi = {
   },
 
   async duplicate(projectId: number, id: number): Promise<ApiResponse<Episode | null>> {
-    if (isMockMode) {
-      const result = await mockEpisodesApi.duplicate(projectId, id)
-      return successResponse(result as unknown as Episode | null)
-    }
     const episodeResponse = await this.getById(projectId, id)
     if (!episodeResponse.success || !episodeResponse.data) {
       return errorResponse(episodeResponse.message || '复制片段失败', null)

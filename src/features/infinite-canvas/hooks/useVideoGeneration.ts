@@ -1,15 +1,16 @@
 import { useState, useCallback } from 'react';
 import { message } from 'antd';
-import { 
-  generateDashScopeVideo, 
-  generateDashScopeT2VVideo, 
-  generateDashScopeKF2VVideo, 
-  generateDashScopeTemplateEffectVideo,
-  isDashScopeT2VModel, 
-  isDashScopeI2VModel, 
-  isDashScopeKF2VModel 
-} from '../api/video';
+import { videoService } from '@/api/aigc';
+import type { TaskStatus } from '@/api/aigc';
 import type { VideoGenerationParams } from '../types';
+
+const STATUS_LABEL: Record<TaskStatus, string> = {
+  PENDING: '任务排队中...',
+  RUNNING: '视频生成中...',
+  SUCCEEDED: '生成完成！',
+  FAILED: '生成失败',
+  UNKNOWN: '处理中...',
+};
 
 interface UseVideoGenerationReturn {
   generate: (params: VideoGenerationParams, onProgress?: (status: string) => void) => Promise<string | null>;
@@ -31,72 +32,33 @@ export function useVideoGeneration(): UseVideoGenerationReturn {
     setError(null);
     setStatus('准备中...');
 
-    const handleProgress = (taskStatus: string) => {
-      const statusMap: Record<string, string> = {
-        'PENDING': '任务排队中...',
-        'RUNNING': '视频生成中...',
-        'SUCCEEDED': '生成完成！',
-        'FAILED': '生成失败',
-      };
-      const displayStatus = statusMap[taskStatus] || taskStatus;
-      setStatus(displayStatus);
-      onProgress?.(displayStatus);
-    };
-
     try {
-      let videoUrl: string;
+      const videoUrl = await videoService.generate({
+        model: params.model,
+        prompt: params.prompt,
+        firstFrameImage: params.first_frame_image,
+        lastFrameImage: params.last_frame_image,
+        size: params.size,
+        resolution: params.resolution,
+        duration: params.seconds,
+        template: params.template,
+        onProgress: (progress) => {
+          const label = STATUS_LABEL[progress.status] ?? progress.status;
+          setStatus(label);
+          onProgress?.(label);
+        },
+      });
 
-      // 视频特效模式（有 template 参数）
-      if (params.template && params.first_frame_image) {
-        videoUrl = await generateDashScopeTemplateEffectVideo(
-          params.first_frame_image,
-          params.template,
-          params.resolution || '720P',
-          params.model,
-          handleProgress
-        );
-      } else if (isDashScopeT2VModel(params.model)) {
-        // 文生视频
-        videoUrl = await generateDashScopeT2VVideo(
-          params.prompt,
-          params.size || '1280*720',
-          params.seconds || 5,
-          params.model,
-          handleProgress
-        );
-      } else if (isDashScopeKF2VModel(params.model)) {
-        // 关键帧生视频
-        videoUrl = await generateDashScopeKF2VVideo(
-          params.prompt,
-          params.first_frame_image || '',
-          params.last_frame_image || '',
-          params.resolution || '720P',
-          params.model,
-          handleProgress
-        );
-      } else if (isDashScopeI2VModel(params.model)) {
-        // 图生视频
-        videoUrl = await generateDashScopeVideo(
-          params.prompt,
-          params.first_frame_image || '',
-          params.resolution || '720P',
-          params.seconds || 5,
-          params.model,
-          handleProgress
-        );
-      } else {
-        throw new Error(`不支持的模型: ${params.model}`);
-      }
-        
       message.success('视频生成完成！');
       setLoading(false);
       setStatus('');
       return videoUrl;
     } catch (err: unknown) {
-      const is429 = err instanceof Error && (err.message.includes('429') || (err as { response?: { status?: number } }).response?.status === 429);
-      const errorMessage = is429 
-        ? 'API_RATE_LIMIT' 
-        : (err instanceof Error ? err.message : '视频生成失败');
+      const is429 = err instanceof Error && (
+        err.message.includes('429') ||
+        (err as { response?: { status?: number } }).response?.status === 429
+      );
+      const errorMessage = is429 ? 'API_RATE_LIMIT' : (err instanceof Error ? err.message : '视频生成失败');
       setError(errorMessage);
       setStatus('');
       if (!is429) {

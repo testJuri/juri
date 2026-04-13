@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
-import { useProjectStore } from "@/stores/projectStore"
+import { useProjectStore } from "@/store/projectStore"
 import type { Scene } from "@/types"
 import { useState } from "react"
 import SceneCreator from "../SceneCreator"

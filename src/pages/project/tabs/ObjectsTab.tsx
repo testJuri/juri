@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge"
 import { Check, ArrowRight, Wand2, Workflow, Pencil, Trash2, Copy } from "lucide-react"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
 
-import { useProjectStore } from "@/stores/projectStore"
+import { useProjectStore } from "@/store/projectStore"
 import type { ObjectItem, ObjectType } from "@/types"
 import { useState } from "react"
 import ObjectCreator from "../ObjectCreator"

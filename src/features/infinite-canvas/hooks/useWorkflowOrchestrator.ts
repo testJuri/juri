@@ -4,7 +4,7 @@
  */
 import { useState, useCallback } from 'react';
 import { useCanvasStore } from '../stores/canvasStore';
-import { chatCompletions } from '../api/chat';
+import { chatService } from '@/api/aigc';
 import type { WorkflowParams } from '../types';
 
 // 意图分析系统提示词
@@ -59,7 +59,7 @@ export const useWorkflowOrchestrator = (): UseWorkflowOrchestratorReturn => {
   const analyzeIntent = useCallback(
     async (userInput: string, model = 'qwen-plus'): Promise<WorkflowParams | null> => {
       try {
-        const content = await chatCompletions({
+        const content = await chatService.complete({
           model,
           messages: [
             { role: 'system', content: INTENT_ANALYSIS_PROMPT },

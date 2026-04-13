@@ -33,7 +33,7 @@ import { message, Modal, Tooltip } from 'antd';
 import 'reactflow/dist/style.css';
 
 import { useCanvasStore } from './stores/canvasStore';
-import { useProjectsStore } from './stores/projectsStore';
+import { useCanvasDocumentsStore } from './stores/projectsStore';
 import { useThemeStore } from './stores/themeStore';
 import { getAllProjects } from './utils/indexedDB';
 
@@ -93,7 +93,7 @@ const CanvasInner: React.FC = () => {
     canRedo,
   } = useCanvasStore();
 
-  const { projects, getProjectById, getProjectCanvas, updateProjectCanvas, initProjects } = useProjectsStore();
+  const { projects, getProjectById, getProjectCanvas, updateProjectCanvas, initProjects } = useCanvasDocumentsStore();
   const { isDark } = useThemeStore();
 
   const [showApiSettings, setShowApiSettings] = useState(false);

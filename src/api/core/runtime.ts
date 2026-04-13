@@ -10,7 +10,6 @@ export const getAppApiConfig = () => {
   const runtimeBaseURL = import.meta.env.VITE_APP_API_BASE_URL || DEFAULT_APP_API_BASE_URL
 
   return {
-    apiKey: localStorage.getItem('apiKey') || '',
     authToken: getAuthToken(),
     baseURL: runtimeBaseURL,
   }

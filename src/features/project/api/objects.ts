@@ -3,7 +3,6 @@ import type { ObjectDTO } from '@/api/types'
 import { mapObject } from '@/lib/projectMappers'
 import { errorResponse, successResponse, toApiResponse } from './shared'
 import type { ApiResponse } from './shared'
-import { isMockMode, mockObjectsApi } from '@/api/mock'
 
 const inferObjectType = (data: ObjectCreateData): ObjectDTO['type'] => {
   if (data.genMethod === 'upload') {
@@ -24,10 +23,6 @@ const buildObjectPayload = (data: ObjectCreateData) => ({
 
 export const objectsApi = {
   async getAll(projectId: number, type?: ObjectDTO['type']): Promise<ApiResponse<ObjectItem[]>> {
-    if (isMockMode) {
-      const result = await mockObjectsApi.getAll(projectId)
-      return successResponse(result.list as unknown as ObjectItem[])
-    }
     return toApiResponse<{ list: ObjectDTO[] }, never>(
       {
         url: `/projects/${projectId}/objects`,
@@ -43,10 +38,6 @@ export const objectsApi = {
   },
 
   async getById(projectId: number, id: number): Promise<ApiResponse<ObjectItem | null>> {
-    if (isMockMode) {
-      const result = await mockObjectsApi.getById(projectId, id)
-      return successResponse(result as unknown as ObjectItem | null)
-    }
     return toApiResponse<ObjectDTO | null>(
       {
         url: `/projects/${projectId}/objects/${id}`,
@@ -61,10 +52,6 @@ export const objectsApi = {
   },
 
   async create(projectId: number, data: ObjectCreateData): Promise<ApiResponse<ObjectItem>> {
-    if (isMockMode) {
-      const result = await mockObjectsApi.create(projectId, buildObjectPayload(data) as Partial<ObjectDTO>)
-      return successResponse(result as unknown as ObjectItem)
-    }
     return toApiResponse<ObjectDTO, ReturnType<typeof buildObjectPayload>>(
       {
         url: `/projects/${projectId}/objects`,
@@ -80,14 +67,6 @@ export const objectsApi = {
   },
 
   async update(projectId: number, id: number, data: Partial<ObjectItem>): Promise<ApiResponse<ObjectItem | null>> {
-    if (isMockMode) {
-      const result = await mockObjectsApi.update(projectId, id, {
-        name: data.name,
-        description: data.description,
-        coverImage: data.image,
-      } as Partial<ObjectDTO>)
-      return successResponse(result as unknown as ObjectItem | null)
-    }
     return toApiResponse<ObjectDTO | null>(
       {
         url: `/projects/${projectId}/objects/${id}`,
@@ -108,10 +87,6 @@ export const objectsApi = {
   },
 
   async delete(projectId: number, id: number): Promise<ApiResponse<boolean>> {
-    if (isMockMode) {
-      await mockObjectsApi.delete(projectId, id)
-      return successResponse(true)
-    }
     return toApiResponse<true>(
       {
         url: `/projects/${projectId}/objects/${id}`,
@@ -125,10 +100,6 @@ export const objectsApi = {
   },
 
   async duplicate(projectId: number, id: number): Promise<ApiResponse<ObjectItem | null>> {
-    if (isMockMode) {
-      const result = await mockObjectsApi.duplicate(projectId, id)
-      return successResponse(result as unknown as ObjectItem | null)
-    }
     const objectResponse = await this.getById(projectId, id)
     if (!objectResponse.success || !objectResponse.data) {
       return errorResponse(objectResponse.message || '复制物品失败', null)

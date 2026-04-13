@@ -18,13 +18,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ChevronDown, ChevronLeft, ChevronRight, Trash2 } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight, Trash2, Upload } from "lucide-react"
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 import Sidebar from "@/components/layout/Sidebar"
 import ProjectHeader from "@/components/layout/ProjectHeader"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
 import { useWorkflowLauncher } from "@/hooks/useWorkflowLauncher"
-import { useProjectStore } from "@/stores/projectStore"
+import { useProjectStore } from "@/store/projectStore"
 
 import type { WorkflowSourceType } from "@/types"
 import type { ProjectTab } from "@/types"
@@ -42,6 +42,7 @@ import SceneCreator from "./SceneCreator"
 import EpisodeCreator from "./EpisodeCreator"
 import CharacterCreator from "./CharacterCreator"
 import ObjectCreator from "./ObjectCreator"
+import CharacterBatchUploadDialog from "./CharacterBatchUploadDialog"
 
 const projectTabs: ProjectTab[] = ["episodes", "characters", "scenes", "objects", "workflows"]
 const defaultProjectTab: ProjectTab = "scenes"
@@ -93,6 +94,7 @@ export default function ProjectDetail() {
   const [batchMode, setBatchMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [sortBy, setSortBy] = useState<SortOption>("recent")
+  const [batchUploadOpen, setBatchUploadOpen] = useState(false)
 
   const routeTab = isProjectTab(tabParam) ? tabParam : undefined
   const activeTab = routeTab ?? storeActiveTab
@@ -320,6 +322,17 @@ export default function ProjectDetail() {
         }} 
       />
 
+      {/* Character Batch Upload Dialog */}
+      <CharacterBatchUploadDialog
+        open={batchUploadOpen}
+        onOpenChange={setBatchUploadOpen}
+        projectId={numericProjectId || 0}
+        onCreate={async (data) => {
+          if (!numericProjectId) return
+          await createCharacter(numericProjectId, data)
+        }}
+      />
+
       {/* Object Creator Drawer */}
       <ObjectCreator 
         open={ui.isObjectDrawerOpen} 
@@ -384,6 +397,16 @@ export default function ProjectDetail() {
                     className="rounded-xl px-4 py-2.5 text-xs font-bold text-[hsl(var(--secondary))] hover:bg-[hsl(var(--surface-container-low))]"
                   >
                     取消
+                  </Button>
+                )}
+                {activeTab === "characters" && (
+                  <Button
+                    onClick={() => setBatchUploadOpen(true)}
+                    variant="outline"
+                    className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-bold hover:bg-[hsl(var(--surface-container-low))]"
+                  >
+                    <Upload className="w-4 h-4" />
+                    上传角色
                   </Button>
                 )}
                 {assetType && (

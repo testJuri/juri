@@ -9,9 +9,10 @@ import type { MouseEvent } from "react"
 import { useState } from "react"
 import { Trash2, Check, ArrowRight, Wand2, Workflow, User, Sparkles, Image, Settings, Pencil } from "lucide-react"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
-import { useProjectStore } from "@/stores/projectStore"
-import type { Character, CharacterEditData } from "@/types"
+import { useProjectStore } from "@/store/projectStore"
+import type { Character, CharacterCreateData, CharacterEditData } from "@/types"
 import CharacterCreator from "../CharacterCreator"
+
 
 interface CharactersTabProps {
   projectId?: number | null
@@ -33,7 +34,7 @@ export default function CharactersTab({
   onToggleSelect,
 }: CharactersTabProps) {
   const characters = useProjectStore((state) => charactersProp ?? state.assets.characters)
-  const { deleteCharacter, updateCharacter } = useProjectStore()
+  const { deleteCharacter, updateCharacter, createCharacter } = useProjectStore()
   const { confirm, notify } = useFeedback()
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -74,6 +75,12 @@ export default function CharactersTab({
     setDetailOpen(false)
   }
 
+  const handleCreate = async (data: CharacterCreateData) => {
+    if (!projectId) return
+    await createCharacter(projectId, data)
+    notify.success("角色创建成功")
+  }
+
   const handleUpdate = async (data: CharacterEditData) => {
     if (!projectId) return
     const roleMap: Record<string, '主角' | '配角'> = { main: '主角', support: '配角' }
@@ -106,57 +113,58 @@ export default function CharactersTab({
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
-      {/* Add New Character Card */}
-      <div
-        className="aspect-[4/5] rounded-lg border-2 border-dashed border-[hsl(var(--outline-variant))] bg-[linear-gradient(180deg,hsl(var(--surface-container))_0%,hsl(var(--surface-container-low))_100%)] p-3.5 transition-all hover:border-[hsl(var(--primary))]/35 hover:shadow-lg hover:shadow-[hsl(var(--primary))]/5"
-      >
-        <div className="mb-5 pt-2">
-          <h3 className="text-sm font-bold text-[hsl(var(--on-surface))]">添加角色</h3>
-          <p className="mt-1 text-[11px] leading-5 text-[hsl(var(--secondary))]">
-            选择创作方式。
-          </p>
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
+        {/* Add New Character Card */}
+        <div
+          className="aspect-[4/5] rounded-lg border-2 border-dashed border-[hsl(var(--outline-variant))] bg-[linear-gradient(180deg,hsl(var(--surface-container))_0%,hsl(var(--surface-container-low))_100%)] p-3.5 transition-all hover:border-[hsl(var(--primary))]/35 hover:shadow-lg hover:shadow-[hsl(var(--primary))]/5"
+        >
+          <div className="mb-5 pt-2">
+            <h3 className="text-sm font-bold text-[hsl(var(--on-surface))]">添加角色</h3>
+            <p className="mt-1 text-[11px] leading-5 text-[hsl(var(--secondary))]">
+              选择创作方式。
+            </p>
+          </div>
+
+          <div className="mt-auto space-y-2">
+            <button
+              type="button"
+              onClick={handleAddNew}
+              className="flex w-full items-center justify-between rounded-xl bg-[hsl(var(--surface-container-high))] px-3 py-3 text-left transition-all hover:bg-[hsl(var(--surface-container-highest))]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[hsl(var(--primary))]/12 text-[hsl(var(--primary))]">
+                  <Wand2 className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-[hsl(var(--on-surface))]">快捷创作</div>
+                  <div className="text-[10px] text-[hsl(var(--secondary))]">快速建角色</div>
+                </div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-[hsl(var(--secondary))]" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenCanvas}
+              className="flex w-full items-center justify-between rounded-xl border border-[hsl(var(--outline-variant))]/60 bg-[hsl(var(--surface))]/75 px-3 py-3 text-left transition-all hover:border-[hsl(var(--primary))]/30 hover:bg-[hsl(var(--surface-container-lowest))]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[hsl(var(--secondary-container))] text-[hsl(var(--on-secondary-container))]">
+                  <Workflow className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-[hsl(var(--on-surface))]">无限画布</div>
+                  <div className="text-[10px] text-[hsl(var(--secondary))]">自由编排</div>
+                </div>
+              </div>
+              <ArrowRight className="h-4 w-4 text-[hsl(var(--secondary))]" />
+            </button>
+          </div>
         </div>
 
-        <div className="mt-auto space-y-2">
-          <button
-            type="button"
-            onClick={handleAddNew}
-            className="flex w-full items-center justify-between rounded-xl bg-[hsl(var(--surface-container-high))] px-3 py-3 text-left transition-all hover:bg-[hsl(var(--surface-container-highest))]"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[hsl(var(--primary))]/12 text-[hsl(var(--primary))]">
-                <Wand2 className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-[hsl(var(--on-surface))]">快捷创作</div>
-                <div className="text-[10px] text-[hsl(var(--secondary))]">快速建角色</div>
-              </div>
-            </div>
-            <ArrowRight className="h-4 w-4 text-[hsl(var(--secondary))]" />
-          </button>
-
-          <button
-            type="button"
-            onClick={handleOpenCanvas}
-            className="flex w-full items-center justify-between rounded-xl border border-[hsl(var(--outline-variant))]/60 bg-[hsl(var(--surface))]/75 px-3 py-3 text-left transition-all hover:border-[hsl(var(--primary))]/30 hover:bg-[hsl(var(--surface-container-lowest))]"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[hsl(var(--secondary-container))] text-[hsl(var(--on-secondary-container))]">
-                <Workflow className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-[hsl(var(--on-surface))]">无限画布</div>
-                <div className="text-[10px] text-[hsl(var(--secondary))]">自由编排</div>
-              </div>
-            </div>
-            <ArrowRight className="h-4 w-4 text-[hsl(var(--secondary))]" />
-          </button>
-        </div>
-      </div>
-
-      {/* Character Cards */}
-      {characters.map((character) => (
+        {/* Character Cards */}
+        {characters.map((character) => (
         <div 
           key={character.id}
           onClick={() => handleCardClick(character)}
@@ -217,6 +225,8 @@ export default function CharactersTab({
           </div>
         </div>
       ))}
+
+      </div>
 
       {/* Character Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
@@ -316,6 +326,7 @@ export default function CharactersTab({
       <CharacterCreator
         open={creatorOpen}
         onOpenChange={setCreatorOpen}
+        onCreate={handleCreate}
         onUpdate={handleUpdate}
         initialData={editCharacter}
         mode={editCharacter ? 'edit' : 'create'}

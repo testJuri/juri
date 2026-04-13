@@ -2,7 +2,6 @@ import type { Workflow } from '@/types'
 import type { WorkflowDTO, WorkflowMemberDTO, CreateWorkflowInput, UpdateWorkflowInput } from '@/api/types'
 import { errorResponse, successResponse, toApiResponse } from './shared'
 import type { ApiResponse } from './shared'
-import { isMockMode } from '@/api/mock'
 
 interface ListData<T> {
   list: T[]
@@ -36,10 +35,6 @@ export const workflowsApi = {
     projectId: number,
     params?: { page?: number; size?: number }
   ): Promise<ApiResponse<ListData<Workflow>>> {
-    if (isMockMode) {
-      return successResponse({ list: [] })
-    }
-
     return toApiResponse<ListData<WorkflowDTO>, never>(
       {
         url: `/projects/${projectId}/canvas-workflows`,
@@ -62,10 +57,6 @@ export const workflowsApi = {
    * 获取工作流详情
    */
   async getById(projectId: number, id: string): Promise<ApiResponse<Workflow | null>> {
-    if (isMockMode) {
-      return successResponse(null)
-    }
-
     return toApiResponse<WorkflowDTO | null>(
       {
         url: `/projects/${projectId}/canvas-workflows/${id}`,
@@ -88,22 +79,6 @@ export const workflowsApi = {
     projectId: number,
     data: CreateWorkflowInput
   ): Promise<ApiResponse<Workflow>> {
-    if (isMockMode) {
-      // Mock 模式：模拟创建
-      const mockWorkflow: Workflow = {
-        id: `workflow_${Date.now()}`,
-        projectId: String(projectId),
-        name: data.name,
-        sourceType: (data.sourceType as Workflow['sourceType']) || 'blank',
-        sourceAssetId: data.sourceAssetId,
-        status: 'draft',
-        modified: new Date().toISOString(),
-        thumbnail: data.thumbnail,
-        canvasData: data.canvasData,
-      }
-      return successResponse(mockWorkflow)
-    }
-
     return toApiResponse<WorkflowDTO, CreateWorkflowInput>(
       {
         url: `/projects/${projectId}/canvas-workflows`,
@@ -128,22 +103,6 @@ export const workflowsApi = {
     workflowId: string,
     data: UpdateWorkflowInput
   ): Promise<ApiResponse<Workflow | null>> {
-    if (isMockMode) {
-      // Mock 模式：模拟更新
-      const mockWorkflow: Workflow = {
-        id: workflowId,
-        projectId: String(projectId),
-        name: data.name || '未命名工作流',
-        sourceType: (data.sourceType as Workflow['sourceType']) || 'blank',
-        sourceAssetId: data.sourceAssetId,
-        status: (data.status as Workflow['status']) || 'draft',
-        modified: new Date().toISOString(),
-        thumbnail: data.thumbnail,
-        canvasData: data.canvasData,
-      }
-      return successResponse(mockWorkflow)
-    }
-
     return toApiResponse<WorkflowDTO, UpdateWorkflowInput>(
       {
         url: `/projects/${projectId}/canvas-workflows/${workflowId}`,
@@ -163,10 +122,6 @@ export const workflowsApi = {
    * 删除工作流
    */
   async delete(projectId: number, id: string): Promise<ApiResponse<boolean>> {
-    if (isMockMode) {
-      return successResponse(true)
-    }
-
     return toApiResponse<true>(
       {
         url: `/projects/${projectId}/canvas-workflows/${id}`,
@@ -189,10 +144,6 @@ export const workflowsApi = {
     projectId: number,
     workflowId: string
   ): Promise<ApiResponse<WorkflowMemberDTO[]>> {
-    if (isMockMode) {
-      return successResponse([])
-    }
-
     return toApiResponse<{ list: WorkflowMemberDTO[] }, never>(
       {
         url: `/projects/${projectId}/canvas-workflows/${workflowId}/members`,
@@ -216,16 +167,6 @@ export const workflowsApi = {
     workflowId: string,
     data: { userId: number; role: 'editor' | 'viewer' }
   ): Promise<ApiResponse<WorkflowMemberDTO>> {
-    if (isMockMode) {
-      const mockMember: WorkflowMemberDTO = {
-        userId: data.userId,
-        workflowId,
-        role: data.role,
-        joinedAt: new Date().toISOString(),
-      }
-      return successResponse(mockMember)
-    }
-
     return toApiResponse<WorkflowMemberDTO, { userId: number; role: 'editor' | 'viewer' }>(
       {
         url: `/projects/${projectId}/canvas-workflows/${workflowId}/members`,
@@ -251,16 +192,6 @@ export const workflowsApi = {
     userId: number,
     role: 'editor' | 'viewer'
   ): Promise<ApiResponse<WorkflowMemberDTO>> {
-    if (isMockMode) {
-      const mockMember: WorkflowMemberDTO = {
-        userId,
-        workflowId,
-        role,
-        joinedAt: new Date().toISOString(),
-      }
-      return successResponse(mockMember)
-    }
-
     return toApiResponse<WorkflowMemberDTO, { role: 'editor' | 'viewer' }>(
       {
         url: `/projects/${projectId}/canvas-workflows/${workflowId}/members/${userId}`,
@@ -285,10 +216,6 @@ export const workflowsApi = {
     workflowId: string,
     userId: number
   ): Promise<ApiResponse<boolean>> {
-    if (isMockMode) {
-      return successResponse(true)
-    }
-
     return toApiResponse<true>(
       {
         url: `/projects/${projectId}/canvas-workflows/${workflowId}/members/${userId}`,

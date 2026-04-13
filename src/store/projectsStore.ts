@@ -117,12 +117,6 @@ export const useProjectsStore = create<ProjectsState>()(
   )
 )
 
-// 初始化函数
-export function initProjectsStore() {
-  const store = useProjectsStore.getState()
-  store.fetchProjects()
-}
-
 // 强制刷新函数
 export function refreshProjects() {
   const store = useProjectsStore.getState()

@@ -9,10 +9,13 @@ import {
   identityOptions,
   setStoredIdentity,
   getIdentityByRoleId,
+  clearSession,
+  clearActiveProjectId,
+  getCurrentUser,
+  getUserRoleId,
   type IdentityOption,
-} from "@/lib/mock-identities"
+} from "@/lib/session"
 import { cn } from "@/lib/utils"
-import { clearSession, clearActiveProjectId, getCurrentUser, getUserRoleId } from "@/lib/session"
 import { ChevronDown, Check, LogOut, Shield, User } from "lucide-react"
 
 interface UserProfileMenuProps {

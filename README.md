@@ -81,38 +81,76 @@ npm run lint
 - Infinite Canvas：基于 React Flow 的工作流画布，包含图像/视频/文本/效果节点
 - 统一反馈系统：全局 toast + confirm 弹窗
 
-## 当前状态管理
+## 状态管理 & 登录态
 
-- `src/stores/projectStore.ts`
-  - 管理项目工作台中的片段、场景、角色、物品
-  - 当前以本地 mock 数据和同步 CRUD 为主
-- `src/features/infinite-canvas/stores/`
-  - 管理 Infinite Canvas 的项目、主题、画布状态
-- `src/components/feedback/FeedbackProvider.tsx`
-  - 提供 `notify` 和 `confirm`
-- `src/lib/mock-identities.ts`
-  - 管理身份模拟、权限能力与身份切换事件
+### Zustand Stores
+
+| Store | 职责 |
+|-------|------|
+| `src/stores/projectStore.ts` | 项目工作台：片段、场景、角色、物品的 CRUD |
+| `src/store/modelsStore.ts` | AI 模型列表全局缓存，按 modality 分片，带 TTL + 冷却期 |
+| `src/features/infinite-canvas/stores/canvasStore.ts` | Canvas 画布状态（节点、边、视口、历史记录） |
+| `src/features/infinite-canvas/stores/projectsStore.ts` | Canvas 项目列表 |
+| `src/features/infinite-canvas/stores/themeStore.ts` | Canvas 主题切换 |
+
+### 登录态 & localStorage
+
+登录态由 `src/lib/session.ts` 统一管理，登录成功后 `saveSession()` 会：
+
+1. 保存完整 session JSON（`mangacanvas-session`）
+2. 拆分存储 user 字段到独立 key，方便单字段读取
+
+当前 localStorage 中存储的关键参数：
+
+| Key | 说明 | 来源 |
+|-----|------|------|
+| `mangacanvas-session` | 完整 session（token + refreshToken + user） | 登录接口 |
+| `mangacanvas-user-id` | 用户 ID | 拆分自 session |
+| `mangacanvas-user-username` | 用户名 | 拆分自 session |
+| `mangacanvas-user-email` | 邮箱 | 拆分自 session |
+| `mangacanvas-user-roleId` | 角色 ID（1=超管 2=管理员 3=员工） | 拆分自 session |
+| `mangacanvas-user-credits` | 积分 | 拆分自 session |
+| `mangacanvas-user-organizationIds` | 组织 ID 列表 | 拆分自 session |
+| `mangacanvas-active-project-id` | 当前活跃项目 ID | 用户操作 |
+| `apiKey` | 业务 API Key | 用户设置 |
+| `dashscopeApiKey` | DashScope API Key | 用户设置 |
+| `models-storage-v2` | 模型列表缓存 | modelsStore persist |
+
+### 其他全局状态
+
+- `src/components/feedback/FeedbackProvider.tsx` — 提供 `notify` 和 `confirm`
+- `src/lib/mock-identities.ts` — 管理身份模拟、权限能力与身份切换事件
 
 ## 项目结构
-
-下面是当前仓库中更接近真实情况的结构摘要：
 
 ```text
 src/
 ├── api/
-│   ├── clients/
-│   ├── core/
+│   ├── aigc/              ← AIGC 统一服务层（生图/生视频/聊天）
+│   │   ├── types.ts
+│   │   ├── taskRunner.ts
+│   │   ├── imageService.ts
+│   │   ├── videoService.ts
+│   │   ├── chatService.ts
+│   │   └── index.ts
+│   ├── clients/           ← HTTP 客户端实例
+│   │   ├── appClient.ts
+│   │   └── dashscopeClient.ts
+│   ├── core/              ← 底层能力（工厂/错误/运行时配置/fetch）
+│   ├── authApi.ts         ← 业务 API
+│   ├── imageGenerationApi.ts
+│   ├── uploadApi.ts
 │   ├── hooks.ts
-│   ├── index.ts
-│   └── projectApi.ts
+│   ├── index.ts           ← 统一出口
+│   └── types.ts
 ├── components/
 │   ├── feedback/
 │   ├── layout/
 │   └── ui/
 ├── data/
 ├── features/
-│   └── infinite-canvas/
-│       ├── api/
+│   └── infinite-canvas/   ← Canvas 工作流子系统
+│       ├── api/           （遗留，逐步迁移到 api/aigc/）
 │       ├── components/
 │       ├── config/
 │       ├── hooks/
@@ -122,9 +160,12 @@ src/
 │       └── utils/
 ├── hooks/
 ├── lib/
+│   └── session.ts         ← 登录态 & localStorage 管理
 ├── pages/
 │   ├── auth/
 │   └── project/
+├── store/
+│   └── modelsStore.ts     ← 模型列表全局缓存
 ├── stores/
 ├── types/
 └── utils/
@@ -135,218 +176,275 @@ src/
 - `src/pages/ProjectDetail.tsx` 仍然存在，但当前主项目工作台入口是 `src/pages/project/index.tsx`
 - `src/api/projectApi.ts` 目前是 mock API，不是真实后端接口层
 - `src/features/infinite-canvas/` 是一个相对独立的子系统，不要把它和主工作台状态混为一层
+- `src/features/infinite-canvas/api/` 下的 `image.ts`、`video.ts`、`chat.ts` 是遗留文件，新代码已统一使用 `src/api/aigc/`
 
-## 请求层架构
+## 前端整体架构
 
-项目现在已经有一套轻量请求层，不要再在业务代码里重复 `axios.create()`。
+项目采用分层架构，从底层到顶层依次为：
 
-### 设计目标
-
-- 统一 `baseURL`、鉴权 header、错误标准化、运行时配置读取
-- 保持架构简单，先做客户端分层
-- 允许渐进迁移：普通 HTTP 请求优先 axios，流式请求可继续使用 `fetch`
-
-### 目录职责
-
-- `src/api/core/createHttpClient.ts`
-  - axios 实例工厂
-  - 统一 request/response interceptor
-  - 把 axios 异常标准化为 `HttpError`
-- `src/api/core/error.ts`
-  - 定义 `HttpError`
-  - 提供错误提取和归一化方法
-- `src/api/core/runtime.ts`
-  - 统一读取运行时配置
-  - 例如环境变量中的业务 `baseURL`，以及 `localStorage` 中的 `apiKey`、`dashscopeApiKey`
-- `src/api/core/fetch.ts`
-  - 给 `fetch` 场景复用的响应校验能力
-  - 主要给流式接口和非 axios 场景用
-- `src/api/clients/appClient.ts`
-  - 项目默认业务客户端
-  - 默认 `baseURL` 由 `VITE_APP_API_BASE_URL` 控制
-  - 未配置时回退到内置默认值
-  - 会自动读取 `apiKey`
-- `src/api/clients/dashscopeClient.ts`
-  - DashScope 专用客户端
-  - 负责 DashScope 的鉴权和错误文案映射
-- `src/api/index.ts`
-  - API 统一出口
-  - 新代码优先从这里 import
-- `src/api/uploadApi.ts`
-  - 文件上传专用 API
-  - 支持预签名上传流程：获取 URL → 直传 OSS → 确认完成
-- `src/hooks/useUpload.ts`
-  - 文件上传 React Hook
-  - 提供 `useUpload`（单文件）和 `useMultiUpload`（多文件）
-
-### 现有使用方式
-
-环境配置：
-
-```bash
-VITE_APP_API_BASE_URL=http://124.156.186.82:8080/api/v1
+```text
+┌─────────────────────────────────────────────────────┐
+│  Pages / Components（页面 & UI 组件）                 │
+├─────────────────────────────────────────────────────┤
+│  Hooks（useImageGeneration / useVideoGeneration ...）│
+├─────────────────────────────────────────────────────┤
+│  AIGC Service Layer      │  Business APIs            │
+│  src/api/aigc/           │  authApi / projectsApi ..  │
+├──────────────────────────┴──────────────────────────┤
+│  HTTP Clients（appClient / dashscopeClient）         │
+├─────────────────────────────────────────────────────┤
+│  Core（createHttpClient / error / runtime / fetch）   │
+└─────────────────────────────────────────────────────┘
 ```
 
-已提供：
+各层职责：
 
-- `.env.development`
-- `.env.production`
-- `.env.example`
+| 层 | 目录 | 职责 |
+|----|------|------|
+| **Core** | `src/api/core/` | axios 工厂、`HttpError` 标准化、运行时配置读取、fetch 辅助 |
+| **Clients** | `src/api/clients/` | 具体的 HTTP 客户端实例，各自管理 baseURL / 鉴权 / 错误文案 |
+| **AIGC Service** | `src/api/aigc/` | 统一的 AIGC 生成能力（图像 / 视频 / 聊天），自动路由到 DashScope 直连或后端代理 |
+| **Business APIs** | `src/api/*.ts` | 普通 CRUD 接口（auth、projects、members、assets、upload 等） |
+| **Hooks** | `src/hooks/`、`src/features/*/hooks/` | 提供 React 组件可直接使用的状态 + 调用封装 |
+| **Pages** | `src/pages/` | 页面级组件，消费 Hooks |
 
-普通 axios 客户端：
+## AIGC 服务层
 
-```ts
-import { appClient } from "@/api"
+项目的核心能力是 AI 生成（生图、生视频、AI 聊天），统一收口在 `src/api/aigc/`。
 
-const response = await appClient.get<MyResponse>("/projects")
-const data = response.data
+### 目录结构
+
+```text
+src/api/aigc/
+├── types.ts           # 统一类型：TaskStatus, ImageGenerateOptions, VideoGenerateOptions 等
+├── taskRunner.ts      # 通用异步任务引擎：submitAndPoll() + pollDashScopeTask()
+├── imageService.ts    # 图像生成统一入口
+├── videoService.ts    # 视频生成统一入口
+├── chatService.ts     # 聊天统一入口（同步 + 流式）
+└── index.ts           # 统一导出
 ```
 
-显式取 `response.data` 的辅助函数：
+### 核心设计
+
+**taskRunner — 通用异步任务引擎**
+
+所有 DashScope AIGC 任务都遵循「提交 → 轮询 → 提取结果」模式。`taskRunner.ts` 提供 `submitAndPoll()` 函数统一处理这个流程，消除重复代码：
 
 ```ts
-import { appClient, createRequest } from "@/api"
-
-const data = await createRequest<MyResponse>(appClient, {
-  url: "/projects",
-  method: "GET",
-})
-```
-
-流式或 fetch 场景：
-
-```ts
-import { getResponseReader, parseJsonResponse } from "@/api"
-```
-
-当前接入状态：
-
-- `src/features/infinite-canvas/utils/request.ts`
-  - 已复用 `appClient`
-- `src/features/infinite-canvas/api/image.ts`
-  - 已复用 `dashscopeClient`
-- `src/features/infinite-canvas/api/video.ts`
-  - 已复用 `dashscopeClient`
-- `src/features/infinite-canvas/api/chat.ts`
-  - 因为涉及流式输出，仍然使用 `fetch`
-  - 但已复用 `src/api/core/fetch.ts`
-- `src/api/imageGenerationApi.ts`
-  - 业务图像生成接口封装（POST /api/v1/ai/images/generations）
-  - 支持模型：qwen-image-2.0/wanx2.1-t2i 等系列
-  - 提供快捷方法：`generate` / `quickGenerate` / `imageToImage`
-
-### 约定
-
-- 新增普通 HTTP 接口时：
-  - 优先复用 `appClient` 或已有专用 client
-  - 不要在业务文件里再次 `axios.create()`
-- 新增第三方服务时：
-  - 在 `src/api/clients/` 下新增独立 client
-  - 把该服务自己的鉴权、超时、错误映射放在对应 client 内
-- 新增流式接口时：
-  - 可以继续使用 `fetch`
-  - 但优先复用 `src/api/core/fetch.ts`
-- UI 提示不要写进 `core`
-  - `core` 只做底层能力
-  - `message.error` 这类逻辑放在具体 client 中注入
-
-### 给下一个 AI 的建议
-
-- 新增业务接口，优先补在 `src/api/` 下，而不是直接写在页面组件里
-- 主业务接口优先复用 `appClient`
-- 特殊服务商接口新增 `src/api/clients/xxxClient.ts`
-- 如果要继续整理，可以新增：
-  - `src/api/services/xxx.ts`
-  - `src/api/types.ts`
-
-### 图像生成 API 使用示例
-
-```ts
-import { imageGenerationApi, SUPPORTED_IMAGE_MODELS } from "@/api"
-
-// 完整参数生成
-const result = await imageGenerationApi.generate({
-  model: 'qwen-image-2.0',
-  prompt: '赛博朋克风格的城市夜景',
-  n: 2,
-  size: '1280x720',
-  negative_prompt: '模糊,低质量'
-})
-// result.data: [{ url: 'https://...' }, { url: 'https://...' }]
-
-// 快捷生成（返回 URL 数组）
-const urls = await imageGenerationApi.quickGenerate('一只可爱的猫咪')
-
-// 图生图
-const newUrls = await imageGenerationApi.imageToImage(
-  '转为水彩风格',
-  'https://example.com/original.jpg',
-  0.6  // 影响强度
+const result = await submitAndPoll<T>(
+  () => submitFn(),           // 提交任务，返回 taskId
+  (data) => extractUrl(data), // 从轮询响应中提取结果
+  { pollInterval, maxAttempts, onProgress }
 )
 ```
 
-### 文件上传使用示例
+**imageService — 图像生成自动路由**
 
-**方式一：使用 Hook（推荐）**
+| 模型系列 | 路由 | 说明 |
+|---------|------|------|
+| `wan2.x` | DashScope 直连 | 异步任务，支持文生图 / 图生图 |
+| `qwen-image` / `wanx` | 后端代理 | 走 `/api/v1/ai/images/generations` |
+
+**videoService — 五种视频模式**
+
+| 模式 | 模型示例 | 说明 |
+|------|---------|------|
+| 文生视频 (T2V) | `wan2.6-t2v` | 纯文本输入 |
+| 图生视频 (I2V) | `wan2.6-i2v-flash` | 首帧图片 + 提示词 |
+| 关键帧生视频 (KF2V) | `wan2.2-kf2v-flash` | 首帧 + 尾帧 |
+| 视频特效 | `wan2.6-i2v-flash` + template | 图片 + 特效模板 |
+
+**chatService — 聊天三种方式**
+
+| 方法 | 说明 |
+|------|------|
+| `chatService.complete()` | 同步调用（后端代理） |
+| `chatService.streamBackend()` | 流式输出（后端代理） |
+| `chatService.streamDashScope()` | 流式输出（DashScope Compatible） |
+
+### 使用示例
+
+**图像生成：**
+
+```ts
+import { imageService } from "@/api/aigc"
+
+// DashScope 文生图
+const urls = await imageService.generate({
+  model: 'wan2.6-t2i',
+  prompt: '赛博朋克风格的城市夜景',
+  size: '1280*1280',
+  onProgress: (p) => console.log(p.status), // PENDING → RUNNING → SUCCEEDED
+})
+
+// DashScope 图生图
+const urls2 = await imageService.generate({
+  model: 'wan2.6-image',
+  prompt: '转为水彩风格',
+  images: ['https://example.com/ref.jpg'],
+})
+
+// 后端代理
+const urls3 = await imageService.generate({
+  model: 'qwen-image-2.0',
+  prompt: '一只猫咪',
+})
+```
+
+**视频生成：**
+
+```ts
+import { videoService } from "@/api/aigc"
+
+// 文生视频
+const videoUrl = await videoService.generate({
+  model: 'wan2.6-t2v',
+  prompt: '夕阳下海浪拍打沙滩',
+  size: '1280*720',
+  duration: 5,
+})
+
+// 图生视频
+const videoUrl2 = await videoService.generate({
+  model: 'wan2.6-i2v-flash',
+  prompt: '镜头缓缓推进',
+  firstFrameImage: 'https://example.com/frame.jpg',
+  resolution: '720P',
+  duration: 5,
+})
+
+// 视频特效
+const videoUrl3 = await videoService.generate({
+  model: 'wan2.6-i2v-flash',
+  prompt: '',
+  firstFrameImage: 'https://example.com/photo.jpg',
+  template: 'dance1',
+})
+```
+
+**聊天 / AI 润色：**
+
+```ts
+import { chatService } from "@/api/aigc"
+
+// 同步
+const answer = await chatService.complete({
+  model: 'qwen-plus',
+  messages: [
+    { role: 'system', content: '你是提示词优化大师' },
+    { role: 'user', content: '一只猫' },
+  ],
+})
+
+// 流式
+for await (const chunk of chatService.streamDashScope({
+  model: 'qwen-plus',
+  messages: [{ role: 'user', content: '你好' }],
+})) {
+  process.stdout.write(chunk)
+}
+```
+
+**在 React 组件中使用 Hooks：**
+
+```ts
+import { useImageGeneration } from '@/features/infinite-canvas/hooks'
+
+const { generate, loading, status } = useImageGeneration()
+const urls = await generate({ model: 'wan2.6-t2i', prompt: '...', size: '1280*1280' })
+```
+
+### 模型判断工具
+
+```ts
+import {
+  isDashScopeDirectModel, isI2IModel,  // 图像
+  isT2VModel, isI2VModel, isKF2VModel, // 视频
+} from "@/api/aigc"
+
+isDashScopeDirectModel('wan2.6-t2i')  // true - DashScope 直连
+isI2IModel('wan2.6-image')            // true - 图生图
+isT2VModel('wan2.6-t2v')              // true - 文生视频
+isKF2VModel('wan2.2-kf2v-flash')      // true - 关键帧生视频
+```
+
+## 请求层架构
+
+项目有一套轻量请求层，不要在业务代码里重复 `axios.create()`。
+
+### Core 层
+
+| 文件 | 职责 |
+|------|------|
+| `src/api/core/createHttpClient.ts` | axios 实例工厂 + 统一拦截器 + 异常标准化为 `HttpError` |
+| `src/api/core/error.ts` | `HttpError` 类 + 错误提取 / 归一化方法 |
+| `src/api/core/runtime.ts` | 运行时配置读取（baseURL / API Key / 鉴权头） |
+| `src/api/core/fetch.ts` | fetch 场景的响应校验（流式接口和非 axios 场景使用） |
+| `src/api/core/response.ts` | 后端 `{ code, data, message }` 响应格式适配 |
+
+### Clients 层
+
+| 文件 | 职责 |
+|------|------|
+| `src/api/clients/appClient.ts` | 主业务客户端，baseURL 由 `VITE_APP_API_BASE_URL` 控制，自动注入 Bearer Token，401 自动跳转登录 |
+| `src/api/clients/dashscopeClient.ts` | DashScope 专用客户端，负责 API Key 鉴权和错误文案翻译 |
+
+### 使用方式
+
+```bash
+# 环境变量
+VITE_APP_API_BASE_URL=http://124.156.186.82:8080/api/v1
+```
+
+```ts
+// 普通请求
+import { appClient } from "@/api"
+const { data } = await appClient.get<MyResponse>("/projects")
+
+// 提取 response.data 的辅助函数
+import { appClient, createRequest } from "@/api"
+const data = await createRequest<MyResponse>(appClient, { url: "/projects", method: "GET" })
+
+// 流式 / fetch
+import { getResponseReader, parseJsonResponse } from "@/api"
+```
+
+### 约定
+
+- 新增普通 HTTP 接口：优先复用 `appClient`，不要 `axios.create()`
+- 新增第三方服务：在 `src/api/clients/` 下新增独立 client
+- 新增流式接口：可用 `fetch`，优先复用 `src/api/core/fetch.ts`
+- **新增 AIGC 能力：在 `src/api/aigc/` 下扩展，不要在组件里直接调 DashScope**
+- UI 提示（`message.error` 等）不写进 `core`，放在 client 或 hook 层
+
+### 给下一个 AI 的建议
+
+- AIGC 相关功能统一使用 `src/api/aigc/` 的 `imageService` / `videoService` / `chatService`
+- `src/features/infinite-canvas/api/` 下的 `image.ts`、`video.ts`、`chat.ts` 是遗留代码，不要再引用
+- 新增业务接口补在 `src/api/` 下，不要写在页面组件里
+- 新增 AI 模型提供商时，在 `src/api/clients/` 新增 client，在 `src/api/aigc/` 中新增路由分支
+
+### 文件上传
+
+**Hook 方式（推荐）：**
 
 ```ts
 import { useUpload } from "@/hooks/useUpload"
 
-// 在组件中使用
 const { uploading, progress, upload } = useUpload({
-  directory: 'characters',  // 上传目录：characters / scenes / objects
-  onSuccess: (url) => {
-    console.log('上传成功:', url)  // https://cdn.xxx/xxx.jpg
-  },
-  onError: (error) => {
-    console.error('上传失败:', error.message)
-  },
+  directory: 'characters',
+  onSuccess: (url) => console.log('上传成功:', url),
+  onError: (error) => console.error('上传失败:', error.message),
 })
 
-// 上传按钮点击事件
-const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0]
-  if (file) {
-    await upload(file)  // 自动完成预签名 → 直传 OSS → 确认流程
-  }
-}
+await upload(file) // 自动完成预签名 → 直传 OSS → 确认流程
 ```
 
-**多文件上传**
-
-```ts
-import { useMultiUpload } from "@/hooks/useUpload"
-
-const { uploading, uploadMultiple } = useMultiUpload({
-  directory: 'objects',
-})
-
-// 批量上传
-const handleMultipleFiles = async (files: File[]) => {
-  const urls = await uploadMultiple(files)
-  console.log('上传完成:', urls)  // ['https://cdn.xxx/1.jpg', 'https://cdn.xxx/2.jpg']
-}
-```
-
-**方式二：直接使用 API**
+**API 方式：**
 
 ```ts
 import { uploadApi } from "@/api"
-
-// 完整上传流程（单文件）
 const url = await uploadApi.uploadSingleFile(file, 'scenes')
-
-// 分步调用
-const presigned = await uploadApi.getPresignedUrl({
-  filename: 'image.jpg',
-  contentType: 'image/jpeg',
-  directory: 'objects',
-})
-await uploadApi.uploadToOSS(presigned.uploadUrl, file, file.type)
-await uploadApi.confirmUpload({
-  accessUrl: presigned.accessUrl,
-  directory: 'objects',
-})
 ```
 
 ## UI 与反馈约定

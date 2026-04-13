@@ -5,44 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Link, useNavigate } from "react-router-dom"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
 import { authApi } from "@/api"
-import { isMockMode } from "@/api/mock"
-import { HttpError } from "@/api/core/error"
-import { clearUnauthorizedRedirectFlag, saveSession } from "@/lib/session"
-
-const shouldFallbackToMock = (error: unknown) => {
-  if (!(error instanceof HttpError)) {
-    return false
-  }
-
-  return !error.status || error.status >= 500 || error.code === "ERR_NETWORK"
-}
-
-const createMockSession = ({
-  email,
-  username,
-}: {
-  email: string
-  username: string
-}) => ({
-  token: `mock-token-${Date.now()}`,
-  refreshToken: `mock-refresh-${Date.now()}`,
-  user: {
-    id: Date.now(),
-    username,
-    email,
-    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-    roleId: 3,
-    role: {
-      id: 3,
-      code: "employee",
-      name: "员工",
-    },
-    organizationIds: [1],
-    credits: 0,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-})
+import { clearUnauthorizedRedirectFlag, getAuthToken, saveSession } from "@/lib/session"
 
 export default function Login() {
   const { notify } = useFeedback()
@@ -55,11 +18,13 @@ export default function Login() {
 
   useEffect(() => {
     clearUnauthorizedRedirectFlag()
-  }, [])
+    if (getAuthToken()) {
+      navigate("/dashboard", { replace: true })
+    }
+  }, [navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('[Login] 点击登录按钮')
     
     if (!email.trim() || !password.trim()) {
       notify.warning("请输入邮箱和密码")
@@ -72,7 +37,6 @@ export default function Login() {
     }
 
     setIsLoading(true)
-    console.log('[Login] 开始调用 authApi.login:', { email, isMockMode })
     try {
       const payload = isLogin
         ? await authApi.login({ email, password })
@@ -82,7 +46,6 @@ export default function Login() {
             password,
             avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
           })
-      console.log('[Login] API 返回:', payload)
 
       saveSession({
         token: payload.token,
@@ -95,18 +58,6 @@ export default function Login() {
       notify.success(isLogin ? "登录成功" : "注册成功")
       navigate("/dashboard")
     } catch (error) {
-      console.log('[Login] API 错误:', error)
-      if (shouldFallbackToMock(error)) {
-        const mockSession = createMockSession({
-          email,
-          username: isLogin ? email.split("@")[0] || "DemoCreator" : username,
-        })
-        saveSession(mockSession)
-        notify.warning("后端暂时不可用，已切换到本地 Mock 登录")
-        navigate("/dashboard")
-        return
-      }
-
       notify.error(error instanceof Error ? error.message : (isLogin ? "登录失败" : "注册失败"))
     } finally {
       setIsLoading(false)
@@ -123,9 +74,6 @@ export default function Login() {
           </h1>
           <p className="text-[hsl(var(--secondary))]">
             {isLogin ? "欢迎回来，继续你的创作之旅" : "创建账号，开启漫画创作新纪元"}
-          </p>
-          <p className="mt-2 text-xs text-[hsl(var(--secondary))]">
-            服务不可用时会自动降级到本地 Mock 登录
           </p>
         </div>
 

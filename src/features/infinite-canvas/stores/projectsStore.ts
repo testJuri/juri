@@ -6,7 +6,7 @@ import * as db from '../utils/indexedDB';
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 const SAVE_DELAY = 500;
 
-export const useProjectsStore = create<ProjectsStore>((set, get) => ({
+export const useCanvasDocumentsStore = create<ProjectsStore>((set, get) => ({
   projects: [],
   currentProjectId: null,
 

@@ -3,7 +3,7 @@ import { message } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
 import { WORKFLOW_TEMPLATES } from '../config/workflows';
 import { useCanvasStore } from '../stores/canvasStore';
-import { useProjectsStore } from '../stores/projectsStore';
+import { useCanvasDocumentsStore } from '../stores/projectsStore';
 import type { WorkflowTemplate } from '../config/workflows';
 
 interface WorkflowPanelProps {
@@ -14,7 +14,7 @@ interface WorkflowPanelProps {
 const WorkflowPanel: React.FC<WorkflowPanelProps> = ({ visible, onClose }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const { nodes, addNode, addEdgeManually, saveHistory } = useCanvasStore();
-  const { updateProjectCanvas } = useProjectsStore();
+  const { updateProjectCanvas } = useCanvasDocumentsStore();
 
   // 点击外部关闭
   useEffect(() => {

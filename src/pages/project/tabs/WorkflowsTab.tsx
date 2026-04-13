@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
 import { useWorkflowLauncher } from "@/hooks/useWorkflowLauncher"
-import { useProjectsStore } from "@/features/infinite-canvas/stores/projectsStore"
+import { useCanvasDocumentsStore } from "@/features/infinite-canvas/stores/projectsStore"
 import type { WorkflowSourceType } from "@/types"
 
 const sourceTypeMeta: Record<
@@ -53,8 +53,8 @@ export default function WorkflowsTab() {
   const { id: projectId } = useParams()
   const { notify } = useFeedback()
   const launchWorkflow = useWorkflowLauncher()
-  const projects = useProjectsStore((state) => state.projects)
-  const initProjects = useProjectsStore((state) => state.initProjects)
+  const projects = useCanvasDocumentsStore((state) => state.projects)
+  const initProjects = useCanvasDocumentsStore((state) => state.initProjects)
 
   useEffect(() => {
     void initProjects()

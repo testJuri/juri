@@ -91,8 +91,6 @@ export interface CharacterCreateData {
   seed?: string
   seedMode?: 'random' | 'fixed'
   quantity?: number
-  isRealPerson?: boolean
-  batchReferenceArchive?: string
 }
 
 export interface CharacterEditData extends CharacterCreateData {
@@ -126,19 +124,6 @@ export interface ObjectCreateData {
 // ==================== 项目工作台状态 ====================
 
 export type ProjectTab = 'episodes' | 'scenes' | 'characters' | 'objects' | 'workflows'
-
-export interface ProjectAssets {
-  episodes: Episode[]
-  scenes: Scene[]
-  characters: Character[]
-  objects: ObjectItem[]
-}
-
-export interface ProjectFilters {
-  searchQuery: string
-  sortBy: 'recent' | 'name' | 'status'
-  statusFilter: EntityStatus | 'all'
-}
 
 export interface Workflow {
   id: string

@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { X, ImagePlus, Check, ChevronDown, Loader2 } from "lucide-react"
 import { useMultiUpload } from "@/hooks/useUpload"
+import type { UploadDirectory } from "@/api/uploadApi"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
 import { useImageModels } from "@/features/infinite-canvas/hooks/useModels"
 
@@ -26,6 +27,7 @@ interface ImageGenerationFormProps {
   quantityOptions?: number[]
   showQuantity?: boolean
   disabled?: boolean
+  directory?: UploadDirectory
 }
 
 // 模型数据从 API 获取，此处保留作为极端情况下的 fallback
@@ -50,6 +52,7 @@ export function ImageGenerationForm({
   quantityOptions = [1, 2, 3, 4],
   showQuantity = true,
   disabled = false,
+  directory = "objects",
 }: ImageGenerationFormProps) {
   const { notify } = useFeedback()
   const [isReferenceDragOver, setIsReferenceDragOver] = useState(false)
@@ -82,7 +85,7 @@ export function ImageGenerationForm({
   }, [models, value.model, onChange, value])
 
   const { uploading, uploadMultiple } = useMultiUpload({
-    directory: "objects",
+    directory,
   })
 
   const updateField = <K extends keyof ImageGenerationConfig>(

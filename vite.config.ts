@@ -11,7 +11,7 @@ export default defineConfig({
     port: 5174,
     proxy: {
       '/api': {
-        target: 'http://124.156.186.82:8080',
+        target: 'http://localhost:8080',
         changeOrigin: true,
         // rewrite: (path) => path.replace(/^\/api/, ''), // 如果后端路径不需要 /api 前缀则启用
       },
@@ -31,7 +31,7 @@ export default defineConfig({
           // UI 库分离
           'vendor-ui': ['antd', '@ant-design/icons', 'lucide-react'],
           // 第三方大库分离
-          'vendor-heavy': ['reactflow', 'framer-motion', 'zustand', 'axios'],
+          'vendor-heavy': ['reactflow', 'zustand', 'axios'],
         },
       },
     },

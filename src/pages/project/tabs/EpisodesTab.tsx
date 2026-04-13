@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Plus, MoreHorizontal, Play, Check, Pencil, Trash2, Copy } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
-import { useProjectStore } from "@/stores/projectStore"
+import { useProjectStore } from "@/store/projectStore"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
 import type { Episode } from "@/types"
 import { useState } from "react"

@@ -25,14 +25,15 @@ import ProjectEditor, { type EditableProject } from "./ProjectEditor"
 import Sidebar from "@/components/layout/Sidebar"
 import { useFeedback } from "@/components/feedback/FeedbackProvider"
 import { projectsApi } from "@/api"
-import { getCurrentUser, setActiveProjectId } from "@/lib/session"
-import { mapProjectCard } from "@/lib/projectMappers"
 import {
+  getCurrentUser,
+  setActiveProjectId,
   IDENTITY_CHANGE_EVENT,
   getIdentityMeta,
   getStoredIdentity,
   type IdentityOption,
-} from "@/lib/mock-identities"
+} from "@/lib/session"
+import { mapProjectCard } from "@/lib/projectMappers"
 
 interface Project {
   id: number
